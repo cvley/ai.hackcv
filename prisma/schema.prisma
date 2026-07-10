@@ -1,0 +1,76 @@
+// hackcv 生产数据模型（PostgreSQL）
+// 开发原型使用内存/JSON 仓储（src/lib/db/repository.ts），
+// 上线时将下方模型通过 Prisma 迁移到 PostgreSQL，并替换仓储实现。
+//
+//   npx prisma migrate dev --name init
+//   # 将 repository.ts 的 ITEMS 读写替换为 PrismaClient 查询
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  type         String // paper | project | news
+  title        String
+  titleZh      String?
+  summary      String
+  recommendation String?
+  url          String
+  permalink    String
+  source       String
+  sources      String[] // 多信源
+  publishedAt  DateTime
+  collectedAt  DateTime
+  category     String
+  tags         String[]
+  score        Int      @default(0)
+  selected     Boolean  @default(false)
+  dailyDate    String?
+  arxivId      String?
+  authors      String[]
+  domains       String[]
+  pdfUrl       String?
+  repo         String?
+  language     String?
+  stars        Int?
+  todayStars   Int?
+  license      String?
+  sourceUrls   String[]
+  attribution  Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([publishedAt])
+  @@index([type])
+  @@index([dailyDate])
+  @@index([selected])
+}
+
+model Daily {
+  date        String   @id
+  generatedAt DateTime
+  windowStart DateTime
+  windowEnd   DateTime
+  lead        Json?
+  sections    Json
+  stats       Json
+  tokenCost   Int
+  createdAt   DateTime @default(now())
+}
+
+model Source {
+  id            String   @id @default(cuid())
+  name          String
+  type          String // rss | api | scraper | manual
+  category      String // paper | project | news
+  url           String
+  enabled       Boolean  @default(true)
+  lastFetch     DateTime?
+  fetchInterval Int
+}
