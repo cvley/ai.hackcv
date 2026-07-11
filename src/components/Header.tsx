@@ -1,13 +1,14 @@
 import Link from "next/link";
 import SearchBar from "./SearchBar";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 
 export default function Header() {
   return (
     <header className="header">
       <div className="header-inner">
         <Link href="/" className="brand">
-          <span className="dot" /> hackcv
+          <Logo size={22} className="logo" /> hackcv
         </Link>
         <nav className="nav">
           <Link href="/">首页</Link>

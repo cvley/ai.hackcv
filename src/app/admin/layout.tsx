@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Logo from "@/components/Logo";
 
 const NAV = [
   { href: "/admin", label: "概览", ic: "📊" },
@@ -41,7 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="admin">
       <aside className="admin-side">
         <div className="admin-brand">
-          <span className="dot" />
+          <Logo size={20} className="logo" />
           hackcv 后台
         </div>
         <nav className="admin-nav">

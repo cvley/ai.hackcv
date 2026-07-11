@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useState } from "react";
+import Logo from "@/components/Logo";
 
 function LoginInner() {
   const router = useRouter();
@@ -42,7 +43,7 @@ function LoginInner() {
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="brand">
-          <span className="dot" />
+          <Logo size={20} className="logo" />
           hackcv
         </div>
         <div className="sub">内容运营后台 · 请登录</div>

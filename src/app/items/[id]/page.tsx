@@ -73,17 +73,27 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
             <span>
               ⭐ <b>{formatCount(item.projectFields.stars)}</b> stars
             </span>
-            <span>
-              今日 <b>+{formatCount(item.projectFields.todayStars)}</b>
-            </span>
-            <span>语言 {item.projectFields.language}</span>
-            <span>协议 {item.projectFields.license}</span>
+            {typeof item.projectFields.todayStars === "number" && (
+              <span>
+                今日 <b>+{formatCount(item.projectFields.todayStars)}</b>
+              </span>
+            )}
+            {item.projectFields.language && (
+              <span>语言 {item.projectFields.language}</span>
+            )}
+            {item.projectFields.license && (
+              <span>协议 {item.projectFields.license}</span>
+            )}
           </div>
         )}
         {item.paperFields && (
           <div className="metrics">
-            <span>领域：{item.paperFields.domains.join("、")}</span>
-            <span>作者：{item.paperFields.authors.join("、")}</span>
+            {item.paperFields.domains?.length > 0 && (
+              <span>领域：{item.paperFields.domains.join("、")}</span>
+            )}
+            {item.paperFields.authors?.length > 0 && (
+              <span>作者：{item.paperFields.authors.join("、")}</span>
+            )}
           </div>
         )}
 
@@ -100,7 +110,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           <a href={item.url} target="_blank" rel="noopener noreferrer">
             🔗 阅读原文（{hostnameOf(item.url)}）
           </a>
-          {item.paperFields && (
+          {item.paperFields?.pdfUrl && (
             <a href={item.paperFields.pdfUrl} target="_blank" rel="noopener noreferrer">
               📄 PDF
             </a>

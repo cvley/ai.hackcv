@@ -80,9 +80,13 @@ async function fetchArxiv(src: Source): Promise<RawItem[]> {
       summary,
       publishedAt: published ? new Date(published).toISOString() : undefined,
       paperFields: {
-        authors,
         arxivId: (idUrl.match(/abs\/(.+)$/) || [])[1] || undefined,
-        categories: [primary],
+        authors,
+        domains: [primary],
+        pdfUrl:
+          (idUrl.match(/abs\/(.+)$/) || [])[1] || undefined
+            ? `https://arxiv.org/pdf/${(idUrl.match(/abs\/(.+)$/) || [])[1] || ""}`
+            : undefined,
       },
       tags: [primary.replace("cs.", "cs.")],
     };

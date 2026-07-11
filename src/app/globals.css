@@ -81,7 +81,7 @@ img { max-width: 100%; display: block; }
   display: flex; align-items: center; gap: 16px;
 }
 .brand { font-weight: 800; font-size: 19px; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
-.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-weak); }
+.brand .logo { width: 22px; height: 22px; border-radius: 6px; flex: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18); }
 .nav { display: flex; gap: 4px; margin-left: 8px; }
 .nav a {
   padding: 6px 12px; border-radius: 8px; color: var(--muted); font-weight: 500; font-size: 14px;
@@ -234,7 +234,7 @@ main { padding: 24px 0 96px; min-height: 60vh; }
   padding: 18px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
 .admin-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; padding: 4px 8px 16px; }
-.admin-brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-weak); }
+.admin-brand .logo { width: 20px; height: 20px; border-radius: 6px; flex: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18); }
 .admin-nav { display: flex; flex-direction: column; gap: 2px; }
 .admin-nav a {
   display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
@@ -298,7 +298,7 @@ main { padding: 24px 0 96px; min-height: 60vh; }
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: var(--bg); }
 .login-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
 .login-card .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 19px; margin-bottom: 4px; }
-.login-card .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 4px var(--primary-weak); }
+.login-card .brand .logo { width: 20px; height: 20px; border-radius: 6px; flex: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.18); }
 .login-card .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 
 /* misc */
