@@ -3,9 +3,10 @@ import ItemCard from "@/components/ItemCard";
 import CategoryTabs from "@/components/CategoryTabs";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-export default function AllPage() {
-  const feed = getItems({ mode: "all", take: 40 });
+export default async function AllPage() {
+  const feed = await getItems({ mode: "all", take: 40 });
   const cats = getCategories().map((c) => ({ slug: c.slug, label: c.label }));
 
   return (

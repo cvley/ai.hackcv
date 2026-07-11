@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const tag = sp.get("tag") ?? undefined;
   const category = sp.get("category") ?? undefined;
 
-  const data = getItems({ mode, type, since, take, cursor, q, tag, category });
+  const data = await getItems({ mode, type, since, take, cursor, q, tag, category });
   return NextResponse.json(data, {
     headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
   });

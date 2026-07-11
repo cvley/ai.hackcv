@@ -6,6 +6,6 @@ export async function GET(req: NextRequest) {
   const take = req.nextUrl.searchParams.get("take")
     ? Number(req.nextUrl.searchParams.get("take"))
     : 30;
-  const dailies = getDailies(take);
+  const dailies = await getDailies(take);
   return NextResponse.json({ count: dailies.length, dailies });
 }

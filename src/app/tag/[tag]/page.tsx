@@ -2,10 +2,11 @@ import { getItemsByTag } from "@/lib/db/repository";
 import ItemCard from "@/components/ItemCard";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-export default function TagPage({ params }: { params: { tag: string } }) {
+export default async function TagPage({ params }: { params: { tag: string } }) {
   const tag = decodeURIComponent(params.tag);
-  const items = getItemsByTag(tag, 60);
+  const items = await getItemsByTag(tag, 60);
 
   return (
     <>

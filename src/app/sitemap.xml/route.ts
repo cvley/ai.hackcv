@@ -1,15 +1,14 @@
 import { SITE } from "@/lib/config";
-import { ITEMS } from "@/lib/db/seed";
-import { getCategories, getDailies } from "@/lib/db/repository";
+import { getCategories, getDailies, getItems } from "@/lib/db/repository";
 
 function url(loc: string, lastmod?: string): string {
   const lm = lastmod ?? new Date().toISOString().slice(0, 10);
   return `  <url><loc>${loc}</loc><lastmod>${lm}</lastmod></url>`;
 }
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const urls: string[] = [
     url(`${SITE.url}/`),
     url(`${SITE.url}/all`),
@@ -22,8 +21,9 @@ export function GET() {
   ];
 
   for (const c of getCategories()) urls.push(url(`${SITE.url}/category/${c.slug}`));
-  for (const d of getDailies(60)) urls.push(url(`${SITE.url}/daily/${d.date}`, d.date));
-  for (const it of ITEMS) urls.push(url(it.permalink, it.updatedAt.slice(0, 10)));
+  for (const d of await getDailies(60)) urls.push(url(`${SITE.url}/daily/${d.date}`, d.date));
+  for (const it of (await getItems({ mode: "all", take: 1000000 })).items)
+    urls.push(url(it.permalink, it.updatedAt.slice(0, 10)));
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

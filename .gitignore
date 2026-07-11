@@ -27,5 +27,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# data override (real DB uses Postgres; this is the dev seed)
-/data/local/
+# data override (real DB uses Postgres; this is the dev runtime store)
+/data/

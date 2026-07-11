@@ -4,11 +4,12 @@ import ItemCard from "@/components/ItemCard";
 import CategoryTabs from "@/components/CategoryTabs";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const cat = getCategories().find((c) => c.slug === params.slug);
   if (!cat) notFound();
-  const items = getItemsByCategory(params.slug, 60);
+  const items = await getItemsByCategory(params.slug, 60);
   const cats = getCategories().map((c) => ({ slug: c.slug, label: c.label }));
 
   return (

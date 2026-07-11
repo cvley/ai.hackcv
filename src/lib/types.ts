@@ -1,5 +1,5 @@
 // hackcv 内容模型 —— 参考重构方案 §7 数据模型设计
-// 运行时使用内存/JSON 仓储（见 lib/db/repository.ts），生产环境可平滑替换为 PostgreSQL（见 prisma/schema.prisma）
+// 内容数据已正式持久化到 PostgreSQL（Prisma 访问，见 lib/db/repository.ts 与 prisma/schema.prisma）
 
 export type ItemType = "paper" | "project" | "news";
 
@@ -98,6 +98,21 @@ export interface Category {
   label: string;
   type: ItemType;
   description?: string;
+}
+
+// 站点设置（后台可编辑）
+export interface SiteSettings {
+  siteName: string;
+  title: string;
+  description: string;
+  itemsPerDay: number; // 每日简报精选条目上限
+  autoSelectThreshold: number; // 抓取条目精选分 >= 此值则自动入选（0-100）
+}
+
+// 登录会话载荷（HMAC 签名，见 lib/auth.ts）
+export interface SessionPayload {
+  user: string;
+  exp: number; // 过期时间戳（秒）
 }
 
 // ---- API 响应包装 ----

@@ -1,12 +1,14 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { getDaily, getDailies } from "@/lib/db/repository";
 import DailyView from "@/components/DailyView";
 
 export const revalidate = 300;
 
-export default function DailyPage() {
-  const dailies = getDailies(30);
-  const today = getDaily();
+export default async function DailyPage() {
+  const dailies = await getDailies(30);
+  const today = await getDaily();
   const daily = today ?? dailies[0];
   if (!daily) notFound();
 

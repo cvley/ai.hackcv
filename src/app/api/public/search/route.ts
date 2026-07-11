@@ -12,6 +12,6 @@ export async function GET(req: NextRequest) {
   const type = (sp.get("type") as ItemType | null) ?? undefined;
   const page = sp.get("page") ? Number(sp.get("page")) : 1;
   const pageSize = sp.get("pageSize") ? Number(sp.get("pageSize")) : 20;
-  const data = searchItems({ q, type, page, pageSize });
+  const data = await searchItems({ q, type, page, pageSize });
   return NextResponse.json(data);
 }

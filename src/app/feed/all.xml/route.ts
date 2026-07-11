@@ -2,10 +2,10 @@ import { getItems } from "@/lib/db/repository";
 import { buildRss } from "@/lib/rss";
 import { SITE } from "@/lib/config";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export function GET() {
-  const items = getItems({ mode: "all", take: 50 }).items;
+export async function GET() {
+  const items = (await getItems({ mode: "all", take: 50 })).items;
   const xml = buildRss(
     `${SITE.name} · 全部动态`,
     "hackcv 全部 AI 资讯动态（含未精选）",

@@ -1,11 +1,13 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { getDailies } from "@/lib/db/repository";
 import { formatDateCN } from "@/lib/utils";
 
 export const revalidate = 300;
 
-export default function ArchivePage() {
-  const dailies = getDailies(60);
+export default async function ArchivePage() {
+  const dailies = await getDailies(60);
   return (
     <>
       <div className="section-title">

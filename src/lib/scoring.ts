@@ -14,7 +14,7 @@ export function computeScore(item: Pick<Item, "sources" | "type" | "publishedAt"
   let score = 50;
 
   // 信源数量：多源归组事件权重更高（最多 +30）
-  const extra = Math.max(0, item.sources.length - 1);
+  const extra = Math.max(0, (item.sources?.length ?? 1) - 1);
   score += Math.min(extra, 5) * 6;
 
   // 时效性：越新越高（最多 +15）

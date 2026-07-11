@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getHot, getItems, getDaily, getCategories } from "@/lib/db/repository";
 import HotList from "@/components/HotList";
 import ItemCard from "@/components/ItemCard";
@@ -6,10 +8,10 @@ import DailyDigestCard from "@/components/DailyDigestCard";
 
 export const revalidate = 300;
 
-export default function Home() {
-  const hot = getHot(5);
-  const feed = getItems({ mode: "selected", take: 20 });
-  const daily = getDaily() ?? undefined;
+export default async function Home() {
+  const hot = await getHot(5);
+  const feed = await getItems({ mode: "selected", take: 20 });
+  const daily = (await getDaily()) ?? undefined;
   const cats = getCategories().map((c) => ({ slug: c.slug, label: c.label }));
 
   return (

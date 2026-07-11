@@ -3,8 +3,9 @@ import ItemCard from "@/components/ItemCard";
 import type { ItemType } from "@/lib/types";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
-export default function SearchPage({
+export default async function SearchPage({
   searchParams,
 }: {
   searchParams: { q?: string; type?: string };
@@ -25,7 +26,7 @@ export default function SearchPage({
     );
   }
 
-  const data = searchItems({ q, type, pageSize: 40 });
+  const data = await searchItems({ q, type, pageSize: 40 });
 
   return (
     <>

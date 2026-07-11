@@ -1,9 +1,9 @@
-// hackcv 生产数据模型（PostgreSQL）
-// 开发原型使用内存/JSON 仓储（src/lib/db/repository.ts），
-// 上线时将下方模型通过 Prisma 迁移到 PostgreSQL，并替换仓储实现。
-//
-//   npx prisma migrate dev --name init
-//   # 将 repository.ts 的 ITEMS 读写替换为 PrismaClient 查询
+// hackcv 正式持久化 · PostgreSQL 数据模型
+// 运行方式：
+//   npx prisma migrate dev --name init   # 创建/变更表结构
+//   npx prisma db seed                  # 灌入种子数据
+//   npx prisma studio                  # 可视化浏览数据
+//   npx prisma generate               # 生成 Prisma Client
 
 generator client {
   provider = "prisma-client-js"
@@ -14,63 +14,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 内容条目（论文 / 开源项目 / 行业资讯）
 model Item {
-  id           String   @id @default(cuid())
-  type         String // paper | project | news
-  title        String
-  titleZh      String?
-  summary      String
+  id            String   @id
+  type          String // paper | project | news
+  title         String
+  titleZh       String?
+  summary       String
   recommendation String?
-  url          String
-  permalink    String
-  source       String
-  sources      String[] // 多信源
-  publishedAt  DateTime
-  collectedAt  DateTime
-  category     String
-  tags         String[]
-  score        Int      @default(0)
-  selected     Boolean  @default(false)
-  dailyDate    String?
-  arxivId      String?
-  authors      String[]
-  domains       String[]
-  pdfUrl       String?
-  repo         String?
-  language     String?
-  stars        Int?
-  todayStars   Int?
-  license      String?
-  sourceUrls   String[]
-  attribution  Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  url           String   @unique
+  permalink     String
+  source        String
+  sources       Json // string[]
+  publishedAt   DateTime
+  collectedAt   DateTime
+  category      String
+  tags          Json // string[]
+  score         Int      @default(0)
+  selected      Boolean  @default(true)
+  dailyDate     String? // YYYY-MM-DD
+  paperFields   Json?
+  projectFields Json?
+  newsFields    Json?
+  attribution   Json
+  createdAt     DateTime
+  updatedAt     DateTime
 
-  @@index([publishedAt])
   @@index([type])
-  @@index([dailyDate])
+  @@index([category])
+  @@index([publishedAt])
   @@index([selected])
+  @@index([dailyDate])
+  @@index([score])
 }
 
-model Daily {
-  date        String   @id
-  generatedAt DateTime
-  windowStart DateTime
-  windowEnd   DateTime
-  lead        Json?
-  sections    Json
-  stats       Json
-  tokenCost   Int
-  createdAt   DateTime @default(now())
-}
-
+// 信源（抓取来源，后台可启停/配置）
 model Source {
-  id            String   @id @default(cuid())
+  id            String   @id
   name          String
   type          String // rss | api | scraper | manual
   category      String // paper | project | news
   url           String
   enabled       Boolean  @default(true)
   lastFetch     DateTime?
-  fetchInterval Int
+  fetchInterval Int      @default(86400)
+
+  @@index([enabled])
+}
+
+// 站点设置（单例行，id 固定为 1）
+model SiteSetting {
+  id                 Int    @id @default(1)
+  siteName           String
+  title              String
+  description        String
+  itemsPerDay        Int    @default(30)
+  autoSelectThreshold Int   @default(55)
 }

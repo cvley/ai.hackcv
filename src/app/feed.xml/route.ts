@@ -2,10 +2,10 @@ import { getItems } from "@/lib/db/repository";
 import { buildRss } from "@/lib/rss";
 import { SITE } from "@/lib/config";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export function GET() {
-  const items = getItems({ mode: "selected", take: 50 }).items;
+export async function GET() {
+  const items = (await getItems({ mode: "selected", take: 50 })).items;
   const xml = buildRss(
     `${SITE.name} · 精选`,
     "hackcv 精选 AI 资讯（论文 / 开源项目 / 行业资讯）",

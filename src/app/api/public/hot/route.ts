@@ -6,6 +6,6 @@ export async function GET(req: NextRequest) {
   const take = req.nextUrl.searchParams.get("take")
     ? Number(req.nextUrl.searchParams.get("take"))
     : 5;
-  const items = getHot(take);
+  const items = await getHot(take);
   return NextResponse.json({ count: items.length, items });
 }

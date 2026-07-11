@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import BottomNav from "@/components/BottomNav";
+import PublicChrome from "@/components/PublicChrome";
 import { websiteLd, JsonLd } from "@/components/JsonLd";
 import { SITE } from "@/lib/config";
 
@@ -46,12 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <JsonLd data={websiteLd()} />
       </head>
       <body>
-        <Header />
-        <main>
-          <div className="container">{children}</div>
-        </main>
-        <Footer />
-        <BottomNav />
+        <PublicChrome>{children}</PublicChrome>
       </body>
     </html>
   );

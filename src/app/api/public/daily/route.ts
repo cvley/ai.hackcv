@@ -3,7 +3,7 @@ import { getDaily } from "@/lib/db/repository";
 
 // GET /api/public/daily  —— 今日研究简报
 export async function GET() {
-  const daily = getDaily();
+  const daily = await getDaily();
   if (!daily) {
     return NextResponse.json({ error: "no daily available for today" }, { status: 404 });
   }

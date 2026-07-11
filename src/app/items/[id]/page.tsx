@@ -7,13 +7,14 @@ import { SITE } from "@/lib/config";
 import { formatCount, formatDateTime, hostnameOf, typeLabel } from "@/lib/utils";
 
 export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
-export default function ItemPage({ params }: { params: { id: string } }) {
-  const item = getItem(params.id);
+export default async function ItemPage({ params }: { params: { id: string } }) {
+  const item = await getItem(params.id);
   if (!item) notFound();
 
   const cat = getCategories().find((c) => c.slug === item.category);
-  const related = getItemsByCategory(item.category)
+  const related = (await getItemsByCategory(item.category))
     .filter((i) => i.id !== item.id)
     .slice(0, 5);
 
