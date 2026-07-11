@@ -86,7 +86,7 @@ export interface Source {
   id: string;
   name: string;
   type: SourceType;
-  category: ItemType;
+  category: string; // 信源默认分类（slug，如 paper/project/news/company）
   url: string;
   enabled: boolean;
   lastFetch?: string;

@@ -427,6 +427,83 @@ export async function getAdminStats(): Promise<AdminStats> {
   };
 }
 
+// ============ Token 消耗统计 ============
+
+export interface TokenAgg {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  items: number;
+  runs: number;
+}
+
+export interface TokenStats {
+  total: TokenAgg; // 累计
+  today: TokenAgg; // 今日
+  byDay: { date: string; totalTokens: number; items: number; runs: number }[];
+  byProvider: { provider: string; totalTokens: number; items: number; runs: number }[];
+}
+
+export async function recordTokenUsage(input: {
+  date: string;
+  provider: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  items: number;
+}): Promise<void> {
+  await prisma.tokenUsage.create({
+    data: {
+      date: input.date,
+      provider: input.provider,
+      promptTokens: input.promptTokens,
+      completionTokens: input.completionTokens,
+      totalTokens: input.totalTokens,
+      items: input.items,
+    },
+  });
+}
+
+export async function getTokenStats(): Promise<TokenStats> {
+  const rows = await prisma.tokenUsage.findMany({ orderBy: { date: "asc" } });
+  const today = new Date().toISOString().slice(0, 10);
+  const empty = (): TokenAgg => ({ promptTokens: 0, completionTokens: 0, totalTokens: 0, items: 0, runs: 0 });
+  const add = (a: TokenAgg, r: { promptTokens: number; completionTokens: number; totalTokens: number; items: number }) => {
+    a.promptTokens += r.promptTokens;
+    a.completionTokens += r.completionTokens;
+    a.totalTokens += r.totalTokens;
+    a.items += r.items;
+    a.runs += 1;
+  };
+  const total = empty();
+  const td = empty();
+  const dayMap = new Map<string, TokenAgg>();
+  const provMap = new Map<string, TokenAgg>();
+  for (const r of rows) {
+    add(total, r);
+    if (r.date === today) add(td, r);
+    const d = dayMap.get(r.date) ?? empty();
+    add(d, r);
+    dayMap.set(r.date, d);
+    const p = provMap.get(r.provider) ?? empty();
+    add(p, r);
+    provMap.set(r.provider, p);
+  }
+  const byDay = [...dayMap.entries()].map(([date, a]) => ({
+    date,
+    totalTokens: a.totalTokens,
+    items: a.items,
+    runs: a.runs,
+  }));
+  const byProvider = [...provMap.entries()].map(([provider, a]) => ({
+    provider,
+    totalTokens: a.totalTokens,
+    items: a.items,
+    runs: a.runs,
+  }));
+  return { total, today: td, byDay, byProvider };
+}
+
 /**
  * 生成（或刷新）某日的 AI 研究简报：
  * 将该日已发布且精选的条目标记为 dailyDate = date，随后由 getDaily 组装。

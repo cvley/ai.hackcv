@@ -33,7 +33,7 @@ const UA = "hackcv-ingest/1.0 (+https://hackcv.com)";
 async function getText(url: string, headers: Record<string, string> = {}): Promise<string> {
   const r = await fetch(url, {
     headers: { "user-agent": UA, ...headers },
-    signal: AbortSignal.timeout(9000),
+    signal: AbortSignal.timeout(15000),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.text();
@@ -129,9 +129,9 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
   const blocks = xml.includes("<item>") ? xml.split("<item>").slice(1) : xml.split("<entry>").slice(1);
   const catBySource: Record<string, string> = {
     "openai-blog": "company",
-    "anthropic-news": "company",
+    "google-ai": "company",
   };
-  const cat = catBySource[src.id] || "research";
+  const cat = catBySource[src.id] || "news";
   return blocks
     .map((b) => {
       const block = b.split(/<\/(item|entry)>/)[0];
@@ -155,31 +155,14 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
     .filter(Boolean) as unknown as RawItem[];
 }
 
-async function fetchPWC(src: Source): Promise<RawItem[]> {
-  const url = "https://paperswithcode.com/api/v1/papers/?page=1&items_per_page=12";
-  const d = JSON.parse(await getText(url));
-  return (d.results || [])
-    .map((p: any) => ({
-      url: p.url_abs || p.url_pdf || "",
-      type: "paper" as ItemType,
-      source: "Papers With Code",
-      category: "research",
-      title: decode(p.title || ""),
-      summary: decode((p.abstract || p.summary || "").slice(0, 500)),
-      publishedAt: p.published ? new Date(p.published).toISOString() : undefined,
-      tags: ["papers-with-code"],
-    }))
-    .filter((x: RawItem) => x.url && x.title);
-}
-
 export const FETCHERS: Record<string, (src: Source) => Promise<RawItem[]>> = {
   "arxiv-ai": fetchArxiv,
   "github-trending": fetchGithub,
   "hacker-news": fetchHN,
   "36kr": fetchRss,
-  jiqizhixin: fetchRss,
   qbitai: fetchRss,
   "openai-blog": fetchRss,
-  "anthropic-news": fetchRss,
-  paperswithcode: fetchPWC,
+  "google-ai": fetchRss,
+  leiphone: fetchRss,
+  "techcrunch-ai": fetchRss,
 };

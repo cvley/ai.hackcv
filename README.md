@@ -92,8 +92,17 @@ npm run db:seed           # = npx prisma db seed
 | `HACKCV_ADMIN_PASS` | 后台管理员密码 | `admin123` |
 | `ANTHROPIC_API_KEY` | 真实 LLM 精选打分（优先） | 不配置则降级启发式 |
 | `ANTHROPIC_MODEL` | Anthropic 模型 | `claude-3-5-haiku-latest` |
+| `SILICONFLOW_API_KEY` | 真实 LLM 精选打分（硅基流动，OpenAI 兼容） | 不配置则降级启发式 |
+| `SILICONFLOW_MODEL` | 硅基流动模型 | `deepseek-ai/DeepSeek-V3` |
+| `DEEPSEEK_API_KEY` | 真实 LLM 精选打分（DeepSeek，OpenAI 兼容） | 不配置则降级启发式 |
+| `MOONSHOT_API_KEY` | 真实 LLM 精选打分（Moonshot Kimi，OpenAI 兼容） | 不配置则降级启发式 |
+| `ZHIPU_API_KEY` | 真实 LLM 精选打分（Zhipu GLM，OpenAI 兼容） | 不配置则降级启发式 |
+| `DASHSCOPE_API_KEY` | 真实 LLM 精选打分（Qwen 通义，OpenAI 兼容） | 不配置则降级启发式 |
+| `OPENROUTER_API_KEY` | 真实 LLM 精选打分（OpenRouter 聚合，OpenAI 兼容） | 不配置则降级启发式 |
 | `OPENAI_API_KEY` | 真实 LLM 精选打分（备选） | 不配置则降级启发式 |
 | `OPENAI_MODEL` | OpenAI 模型 | `gpt-4o-mini` |
+
+> **多供应商**：LLM 打分按优先级 `Anthropic → 其余 OpenAI 兼容供应商（数组顺序）` 依次尝试，任一成功即用；全部失败/未配置则降级到启发式 `computeScore`。新增供应商只需在 `src/lib/llm.ts` 的 `OAIC_PROVIDERS` 数组加一项（base URL + 两个 env 变量名），无需改动其它代码。后台「LLM 状态」页可一键检测各供应商的可用性与延迟；所有 LLM 调用的 token 消耗会按「日期 + 供应商」汇总，在「Token 消耗统计」中查看（累计 / 今日 / 按供应商 / 按日）。
 | `CRON_SECRET` | 定时抓取调度密钥（`/api/cron/ingest`） | 不配置则该接口禁用 |
 | `DATABASE_URL` | PostgreSQL 连接串（生产） | — |
 
@@ -106,8 +115,7 @@ npm run db:seed           # = npx prisma db seed
 - **arXiv**（`cs.AI / cs.CL / cs.LG / cs.CV`，Atom API）→ 论文，按主分类映射标签
 - **GitHub** Trending（Search API，AI/LLM topic）→ 项目
 - **Hacker News**（Algolia API）→ 资讯
-- **RSS**：36氪 / 机器之心 / 量子位 / OpenAI Blog / Anthropic News
-- **Papers With Code** API（best-effort）
+- **RSS**：36氪 / 量子位 / OpenAI Blog / Google AI Blog / 雷锋网 AI / TechCrunch AI
 
 采集流程：`遍历已启用信源 → 抓取 → 按 URL/标题去重 → scoreItem 打分（LLM 或降级）→ 入库`。单信源每次上限 25 条（`lib/ingest.ts` 的 `MAX_PER_SOURCE`），避免 RSS 历史撑爆存储。失败信源记入 `result.errors`，不影响其它信源。
 

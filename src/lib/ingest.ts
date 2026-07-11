@@ -4,6 +4,7 @@ import {
   getExistingForIngest,
   createItem,
   touchSource,
+  recordTokenUsage,
 } from "./db/repository";
 import { scoreItem } from "./llm";
 import { FETCHERS } from "./fetchers";
@@ -57,6 +58,9 @@ export async function runIngestion(opts?: {
   const titleSet = new Set(existingTitles);
   const settings = await getSettings();
 
+  // 按供应商累计本次采集产生的 token 消耗
+  const usageAcc: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; items: number }> = {};
+
   for (const src of sources) {
     const stat: IngestSourceStat = { fetched: 0, created: 0, skipped: 0, ok: true };
     result.bySource[src.id] = stat;
@@ -75,6 +79,19 @@ export async function runIngestion(opts?: {
         const scored = opts?.skipScore
           ? { score: 50 }
           : await scoreItem(r);
+        if (scored.usage) {
+          const acc =
+            (usageAcc[scored.usage.provider] ||= {
+              promptTokens: 0,
+              completionTokens: 0,
+              totalTokens: 0,
+              items: 0,
+            });
+          acc.promptTokens += scored.usage.promptTokens;
+          acc.completionTokens += scored.usage.completionTokens;
+          acc.totalTokens += scored.usage.totalTokens;
+          acc.items++;
+        }
         const item = await createItem({
           ...r,
           score: scored.score,
@@ -98,5 +115,12 @@ export async function runIngestion(opts?: {
   }
 
   result.finishedAt = new Date().toISOString();
+
+  // 采集产生的 token 消耗按供应商汇总入库（供后台统计）
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [provider, u] of Object.entries(usageAcc)) {
+    await recordTokenUsage({ date: today, provider, ...u });
+  }
+
   return result;
 }

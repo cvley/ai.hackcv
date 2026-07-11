@@ -1,6 +1,8 @@
 import type { Source } from "./types";
 
 // 重构方案 §8.1 信源体系
+// 注：Anthropic 已停更 RSS、机器之心 RSS 改为数据服务页、Papers With Code API 长期超时，
+// 故这三者分别替换为 Google AI Blog / 雷锋网 / TechCrunch AI（均经实测可用）。
 export const SOURCES: Source[] = [
   {
     id: "arxiv-ai",
@@ -39,15 +41,6 @@ export const SOURCES: Source[] = [
     fetchInterval: 3_600,
   },
   {
-    id: "jiqizhixin",
-    name: "机器之心",
-    type: "rss",
-    category: "news",
-    url: "https://www.jiqizhixin.com/rss",
-    enabled: true,
-    fetchInterval: 3_600,
-  },
-  {
     id: "qbitai",
     name: "量子位",
     type: "rss",
@@ -60,28 +53,37 @@ export const SOURCES: Source[] = [
     id: "openai-blog",
     name: "OpenAI Blog",
     type: "rss",
-    category: "news",
+    category: "company",
     url: "https://openai.com/blog/rss.xml",
     enabled: true,
     fetchInterval: 3_600,
   },
   {
-    id: "anthropic-news",
-    name: "Anthropic News",
+    id: "google-ai",
+    name: "Google AI Blog",
     type: "rss",
-    category: "news",
-    url: "https://www.anthropic.com/news/rss.xml",
+    category: "company",
+    url: "https://blog.google/technology/ai/rss/",
     enabled: true,
     fetchInterval: 3_600,
   },
   {
-    id: "paperswithcode",
-    name: "Papers With Code",
-    type: "api",
-    category: "paper",
-    url: "https://paperswithcode.com/api/v1",
+    id: "leiphone",
+    name: "雷锋网 AI",
+    type: "rss",
+    category: "news",
+    url: "https://www.leiphone.com/feed",
     enabled: true,
-    fetchInterval: 86_400,
+    fetchInterval: 3_600,
+  },
+  {
+    id: "techcrunch-ai",
+    name: "TechCrunch AI",
+    type: "rss",
+    category: "news",
+    url: "https://techcrunch.com/category/artificial-intelligence/feed/",
+    enabled: true,
+    fetchInterval: 3_600,
   },
 ];
 

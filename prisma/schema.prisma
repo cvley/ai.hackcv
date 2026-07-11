@@ -71,3 +71,18 @@ model SiteSetting {
   itemsPerDay        Int    @default(30)
   autoSelectThreshold Int   @default(55)
 }
+
+// LLM 调用的 token 消耗统计（每次采集按「日期 + 供应商」汇总一行）
+model TokenUsage {
+  id               String   @id @default(cuid())
+  date             String // YYYY-MM-DD
+  provider         String // 供应商 id（anthropic / siliconflow / deepseek …）
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  items            Int      @default(0) // 本次打分条目数
+  createdAt        DateTime @default(now())
+
+  @@index([date])
+  @@index([provider])
+}
