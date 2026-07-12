@@ -14,8 +14,10 @@ export async function POST(req: NextRequest) {
   if (provided !== secret) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
-  const result = await runIngestion();
-  return NextResponse.json({ ok: true, result });
+  // ?force=1 时绕过 fetchInterval 节流，做全量补偿（用于每日兜底）
+  const force = req.nextUrl.searchParams.get("force") === "1";
+  const result = await runIngestion({ force });
+  return NextResponse.json({ ok: true, force, result });
 }
 
 // 便于外部健康检查

@@ -14,6 +14,7 @@ export interface IngestSourceStat {
   fetched: number;
   created: number;
   skipped: number;
+  throttled: number; // 因 fetchInterval 未到周期而跳过的次数
   ok: boolean;
   error?: string;
 }
@@ -23,6 +24,7 @@ export interface IngestResult {
   totalFetched: number;
   totalCreated: number;
   totalSkipped: number;
+  totalThrottled: number;
   startedAt: string;
   finishedAt: string;
   bySource: Record<string, IngestSourceStat>;
@@ -37,6 +39,7 @@ const MAX_PER_SOURCE = 25;
 export async function runIngestion(opts?: {
   sourceIds?: string[];
   skipScore?: boolean;
+  force?: boolean; // 绕过 fetchInterval 节流（后台手动「立即抓取」用）
 }): Promise<IngestResult> {
   const startedAt = new Date().toISOString();
   const result: IngestResult = {
@@ -44,6 +47,7 @@ export async function runIngestion(opts?: {
     totalFetched: 0,
     totalCreated: 0,
     totalSkipped: 0,
+    totalThrottled: 0,
     startedAt,
     finishedAt: startedAt,
     bySource: {},
@@ -62,8 +66,21 @@ export async function runIngestion(opts?: {
   const usageAcc: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; items: number }> = {};
 
   for (const src of sources) {
-    const stat: IngestSourceStat = { fetched: 0, created: 0, skipped: 0, ok: true };
+    const stat: IngestSourceStat = { fetched: 0, created: 0, skipped: 0, throttled: 0, ok: true };
     result.bySource[src.id] = stat;
+
+    // fetchInterval 节流：默认开启；显式指定 sourceIds / force 时跳过（后台手动抓取应强制执行）。
+    // 这样单次每小时 cron 即可自动区分——新闻源(3600s)每小时重抓，论文/GitHub(86400s)每 24h 才抓一次。
+    if (!opts?.force && !opts?.sourceIds) {
+      const intervalMs = (src.fetchInterval || 86400) * 1000;
+      const last = src.lastFetch ? new Date(src.lastFetch).getTime() : 0;
+      if (last && Date.now() - last < intervalMs) {
+        stat.throttled++;
+        result.totalThrottled++;
+        continue;
+      }
+    }
+
     const fetcher = FETCHERS[src.id];
     if (!fetcher) continue;
     try {

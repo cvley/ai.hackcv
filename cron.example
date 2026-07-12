@@ -1,0 +1,29 @@
+# ============================================================================
+# hackcv 定时采集 · crontab 模板
+# 用法：crontab -e，把下面内容粘贴进去（按需改域名 / 脚本路径 / 时区）。
+# ============================================================================
+#
+# 重要说明：
+#   1) 时区 = 本机本地时区（crontab 按 /etc/localtime 计算，不是 UTC）。
+#      想北京时间触发，需服务器时区为 Asia/Shanghai：
+#          sudo timedatectl set-timezone Asia/Shanghai
+#   2) CRON_SECRET 必须与部署站点的 CRON_SECRET 环境变量完全一致，
+#      否则 /api/cron/ingest 返回 403，采集不会执行。
+#   3) 并发锁已在脚本内（flock），这里无需再套一层锁。
+#   4) 服务端已按各信源 fetchInterval 节流：
+#        新闻类源(3600s)  → 每小时重抓
+#        论文 / GitHub(86400s) → 每 24 小时才抓一次
+#      因此「每小时一条 cron」即可自动实现「每小时新闻 / 每天论文」。
+#      每日的 force 全量仅作兜底补偿（兜住漏抓 / 被节流跳过的源）。
+#
+# ---------------------------------------------------------------------------
+
+# 配置（crontab 文件顶部，权限 600 仅 root 可读）
+CRON_SECRET=在这里填写你的密钥
+HACKCV_ENDPOINT=https://hackcv.com
+
+# 每小时第 5 分：常规触发（尊重 fetchInterval 节流）
+5 * * * * /opt/hackcv/cron-ingest.sh >> /var/log/hackcv-cron-ingest.log 2>&1
+
+# （可选）每天 08:17 强制全量补偿一次
+17 8 * * * /opt/hackcv/cron-ingest.sh force >> /var/log/hackcv-cron-ingest.log 2>&1

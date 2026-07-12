@@ -15,6 +15,6 @@ export async function POST(req: NextRequest) {
   } catch {
     /* 空 body = 全量 */
   }
-  const result = await runIngestion({ sourceIds });
+  const result = await runIngestion({ sourceIds, force: true });
   return NextResponse.json({ ok: true, result });
 }
