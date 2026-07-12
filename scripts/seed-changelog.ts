@@ -1,17 +1,8 @@
-import { getChangelogs } from "@/lib/db/repository";
+// 将历史更新日志灌入 Changelog 表（按 version 幂等，重复运行安全）。
+// 运行：node ./node_modules/.bin/tsx scripts/seed-changelog.ts
+import { prisma } from "../src/lib/db/prisma";
 
-export const metadata = { title: "更新日志" };
-export const dynamic = "force-dynamic";
-
-interface Entry {
-  id?: string;
-  version: string;
-  title: string;
-  items: string[];
-}
-
-// 空库兜底：首次部署未灌种子时仍展示历史记录
-const FALLBACK: Entry[] = [
+const SEED: { version: string; title: string; items: string[] }[] = [
   {
     version: "2026-07-12",
     title: "定时采集与信源节流",
@@ -55,33 +46,24 @@ const FALLBACK: Entry[] = [
   },
 ];
 
-export default async function ChangelogPage() {
-  let entries: Entry[] = [];
-  try {
-    const db = await getChangelogs();
-    if (db && db.length) {
-      entries = db.map((e) => ({ id: e.id, version: e.version, title: e.title, items: e.items }));
+async function main() {
+  let added = 0;
+  let skipped = 0;
+  for (const e of SEED) {
+    const existing = await prisma.changelog.findFirst({ where: { version: e.version } });
+    if (existing) {
+      skipped++;
+      continue;
     }
-  } catch {
-    /* 读库失败则走兜底 */
+    await prisma.changelog.create({ data: e });
+    added++;
   }
-  if (entries.length === 0) entries = FALLBACK;
-
-  return (
-    <div className="prose">
-      <h1>📝 更新日志</h1>
-      {entries.map((e) => (
-        <section key={e.id ?? e.version}>
-          <h2>
-            {e.version} · {e.title}
-          </h2>
-          <ul>
-            {e.items.map((it) => (
-              <li key={it}>{it}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
+  console.log(`changelog seed done: added=${added}, skipped=${skipped}`);
 }
+
+main()
+  .catch((e) => {
+    console.error("seed failed:", e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

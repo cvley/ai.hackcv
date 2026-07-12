@@ -86,3 +86,15 @@ model TokenUsage {
   @@index([date])
   @@index([provider])
 }
+
+// 更新日志（后台可编辑，按 version 倒序展示）
+model Changelog {
+  id        String   @id @default(cuid())
+  version   String // 如 2026-07-12（同时作为日期 / 排序键）
+  title     String
+  items     Json // string[] 改动条目
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([version])
+}

@@ -386,6 +386,63 @@ export async function updateSettings(patch: Partial<SiteSettings>): Promise<Site
   return getSettings();
 }
 
+// ============ 更新日志（后台可编辑）============
+
+export interface ChangelogEntry {
+  id: string;
+  version: string; // 如 2026-07-12（同时作为日期 / 排序键）
+  title: string;
+  items: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToChangelog(r: any): ChangelogEntry {
+  return {
+    id: r.id,
+    version: r.version,
+    title: r.title,
+    items: Array.isArray(r.items) ? (r.items as string[]) : [],
+    createdAt: new Date(r.createdAt).toISOString(),
+    updatedAt: new Date(r.updatedAt).toISOString(),
+  };
+}
+
+export async function getChangelogs(): Promise<ChangelogEntry[]> {
+  const rows = await prisma.changelog.findMany({ orderBy: { version: "desc" } });
+  return rows.map(rowToChangelog);
+}
+
+export async function createChangelog(input: {
+  version: string;
+  title: string;
+  items: string[];
+}): Promise<ChangelogEntry> {
+  const row = await prisma.changelog.create({
+    data: { version: input.version, title: input.title, items: input.items },
+  });
+  return rowToChangelog(row);
+}
+
+export async function updateChangelog(
+  id: string,
+  patch: { version?: string; title?: string; items?: string[] },
+): Promise<ChangelogEntry | null> {
+  const existing = await prisma.changelog.findUnique({ where: { id } });
+  if (!existing) return null;
+  const row = await prisma.changelog.update({ where: { id }, data: patch });
+  return rowToChangelog(row);
+}
+
+export async function deleteChangelog(id: string): Promise<boolean> {
+  try {
+    await prisma.changelog.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface AdminStats {
   totalItems: number;
   selectedItems: number;
