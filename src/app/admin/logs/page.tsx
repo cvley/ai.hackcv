@@ -199,14 +199,20 @@ export default function AdminLogs() {
             <span className="bar" />
             近 24 小时趋势
           </div>
+          <div className="hour-chart-meta">
+            <span>峰值 {maxHour} 次/小时</span>
+            <span className="hour-axis-hint">每 3 小时一格刻度 · 悬停查看明细</span>
+          </div>
           <div className="hour-chart">
-            {stats.byHour.map((h) => (
-              <div className="hour-bar" key={h.hour} title={`${h.hour} · ${h.count}`}>
+            {stats.byHour.map((h, i) => (
+              <div className="hour-bar" key={h.hour} title={`${h.hour} · ${h.count} 次`}>
                 <div
                   className="hour-fill"
                   style={{ height: `${(h.count / maxHour) * 100}%` }}
-                />
-                <span className="hour-label">{h.hour.slice(-2)}</span>
+                >
+                  {h.count > 0 && <span className="hour-count">{h.count}</span>}
+                </div>
+                <span className="hour-label">{i % 3 === 0 ? h.hour.slice(-2) : ""}</span>
               </div>
             ))}
           </div>
