@@ -11,6 +11,7 @@ const NAV = [
   { href: "/admin/items/new", label: "新建条目", ic: "➕" },
   { href: "/admin/dailies", label: "每日简报", ic: "📰" },
   { href: "/admin/sources", label: "信源配置", ic: "🔌" },
+  { href: "/admin/logs", label: "日志分析", ic: "📈" },
   { href: "/admin/llm", label: "LLM 状态", ic: "🧠" },
   { href: "/admin/settings", label: "站点设置", ic: "⚙️" },
   { href: "/admin/changelog", label: "更新日志", ic: "📝" },
