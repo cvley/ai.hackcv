@@ -68,6 +68,15 @@ export const SOURCES: Source[] = [
     fetchInterval: 3_600,
   },
   {
+    id: "nvidia-blog",
+    name: "NVIDIA Blog",
+    type: "rss",
+    category: "company",
+    url: "https://blogs.nvidia.com/feed/",
+    enabled: true,
+    fetchInterval: 3_600,
+  },
+  {
     id: "leiphone",
     name: "雷锋网 AI",
     type: "rss",

@@ -131,11 +131,7 @@ async function fetchHN(src: Source): Promise<RawItem[]> {
 async function fetchRss(src: Source): Promise<RawItem[]> {
   const xml = await getText(src.url);
   const blocks = xml.includes("<item>") ? xml.split("<item>").slice(1) : xml.split("<entry>").slice(1);
-  const catBySource: Record<string, string> = {
-    "openai-blog": "company",
-    "google-ai": "company",
-  };
-  const cat = catBySource[src.id] || "news";
+  const cat = src.category || "news";
   return blocks
     .map((b) => {
       const block = b.split(/<\/(item|entry)>/)[0];
@@ -229,6 +225,7 @@ export const FETCHERS: Record<string, (src: Source) => Promise<RawItem[]>> = {
   qbitai: fetchRss,
   "openai-blog": fetchRss,
   "google-ai": fetchRss,
+  "nvidia-blog": fetchRss,
   leiphone: fetchRss,
   "techcrunch-ai": fetchRss,
 };
