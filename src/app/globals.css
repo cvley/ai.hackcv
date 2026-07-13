@@ -336,6 +336,10 @@ main { padding: 24px 0 96px; min-height: 60vh; }
 .switch input:checked + .slider::before { transform: translateX(18px); }
 
 /* ===== /admin/logs 日志分析 ===== */
+.logs-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.logs-tabs button { padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .12s; }
+.logs-tabs button:hover { border-color: var(--primary); color: var(--text); }
+.logs-tabs button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 .logs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
 .logs-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
 .hour-chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; }

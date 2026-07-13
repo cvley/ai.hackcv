@@ -5,6 +5,16 @@ import { promises as fs } from "fs";
 export const NGINX_LOG_PATH =
   process.env.HACKCV_NGINX_LOG || "/var/log/nginx/ai.hackcv.access.log";
 
+// 多站点日志路径：ai 子站 / hackcv.com 主站
+export type LogSite = "ai" | "main";
+export const LOG_PATHS: Record<LogSite, string> = {
+  ai: process.env.HACKCV_NGINX_LOG_AI || "/var/log/nginx/ai.hackcv.access.log",
+  main: process.env.HACKCV_NGINX_LOG_MAIN || "/var/log/nginx/hackcv.access.log",
+};
+export function logPath(site: LogSite = "ai"): string {
+  return LOG_PATHS[site] || LOG_PATHS.ai;
+}
+
 // combined: $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
 const LINE_RE =
   /^(\S+) \S+ \S+ \[([^\]]+)\] "([^"]*)" (\d{3}) (\d+|-) "([^"]*)" "([^"]*)"/;
@@ -197,14 +207,15 @@ export function analyze(rawLines: string[], top = 20): LogStats {
   };
 }
 
-export async function readAndAnalyze(top = 20): Promise<LogStats> {
+export async function readAndAnalyze(site: LogSite = "ai", top = 20): Promise<LogStats> {
+  const path = logPath(site);
   let data: string;
   try {
-    data = await fs.readFile(NGINX_LOG_PATH, "utf8");
+    data = await fs.readFile(path, "utf8");
   } catch {
     return {
       available: false,
-      path: NGINX_LOG_PATH,
+      path,
       total: 0,
       parsed: 0,
       uniqueIps: 0,
@@ -225,5 +236,7 @@ export async function readAndAnalyze(top = 20): Promise<LogStats> {
     };
   }
   const lines = data.split("\n").filter((l) => l.trim());
-  return analyze(lines, top);
+  const stats = analyze(lines, top);
+  stats.path = path;
+  return stats;
 }

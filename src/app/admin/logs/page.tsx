@@ -62,18 +62,22 @@ export default function AdminLogs() {
   const [stats, setStats] = useState<LogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [top, setTop] = useState(20);
+  const [site, setSite] = useState<"ai" | "main">("ai");
 
-  function load(t = 20) {
+  function load(s: "ai" | "main" = site, t = top) {
     setLoading(true);
-    fetch(`/api/admin/logs?top=${t}`, { credentials: "same-origin" })
+    fetch(`/api/admin/logs?top=${t}&site=${s}`, { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => setStats(d.stats))
+      .then((d) => {
+        setStats(d.stats);
+        setSite(d.site ?? s);
+      })
       .catch(() => router.push("/admin/login"))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    load(top);
+    load("ai", top);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -117,8 +121,17 @@ export default function AdminLogs() {
         <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--muted)" }}>
           {fmtTime(stats.windowStart)} ~ {fmtTime(stats.windowEnd)} · {stats.path}
         </span>
-        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 12 }} onClick={() => load(top)}>
+        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 12 }} onClick={() => load(site, top)}>
           🔄 刷新
+        </button>
+      </div>
+
+      <div className="logs-tabs">
+        <button className={site === "ai" ? "active" : ""} onClick={() => load("ai", top)}>
+          ai.hackcv.com（子站）
+        </button>
+        <button className={site === "main" ? "active" : ""} onClick={() => load("main", top)}>
+          hackcv.com（主站）
         </button>
       </div>
 
