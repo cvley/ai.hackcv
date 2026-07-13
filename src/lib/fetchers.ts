@@ -1,4 +1,8 @@
 import type { Item, ItemType, Source } from "./types";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileP = promisify(execFile);
 
 // 抓取得到的原始条目（尚未打分/入库）
 export interface RawItem extends Partial<Item> {
@@ -157,15 +161,23 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
   return parseRssXml(await getText(src.url), src);
 }
 
-// Twitter/X via xcancel（Nitter 实例）。需伪装 RSS reader UA，否则返回
-// "RSS reader not yet whitelisted!"。实测 Inoreader / FreshRSS / Tiny Tiny RSS UA 可用。
+// Twitter/X via xcancel（Nitter 实例）。xcancel 按 TLS 指纹拦截 node fetch
+// （返回 "RSS reader not yet whitelisted"），但放行 curl —— 故用 curl 子进程抓取，
+// UA 仍伪装 Inoreader（实测 Inoreader/FreshRSS/Tiny Tiny RSS UA 可用）。
 export async function fetchTwitter(src: Source): Promise<RawItem[]> {
-  const r = await fetch(src.url, {
-    headers: { "user-agent": "Inoreader/1.0 (+https://inoreader.com)" },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return parseRssXml(await r.text(), src);
+  const { stdout } = await execFileP("curl", [
+    "-s",
+    "--max-time",
+    "15",
+    "--compressed",
+    "-A",
+    "Inoreader/1.0 (+https://inoreader.com)",
+    src.url,
+  ]);
+  if (!stdout || stdout.includes("RSS reader not yet whitelisted")) {
+    throw new Error("xcancel rejected (not whitelisted)");
+  }
+  return parseRssXml(stdout, src);
 }
 
 function fmtDuration(sec: number): string {
