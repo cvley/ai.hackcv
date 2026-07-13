@@ -1,0 +1,64 @@
+# hackcv 容器化编排：web(Next.js) + db(PostgreSQL) + scheduler(定时采集)
+# 用法：
+#   1) 复制 .env.example 为 .env，按需修改（尤其改掉所有默认弱口令/密钥）
+#   2) 先起 db 并建表：docker compose up db -d && docker compose run --rm web npx prisma migrate deploy
+#      或等 web 启动时 entrypoint 自动 migrate deploy（db 需先 healthy）
+#   3) 构建并启动全部：docker compose up -d --build
+#
+# 说明：
+#   - web 的 BUILD_DATABASE_URL 在 build 阶段使用（ISR 预渲染需连库），
+#     运行期 DATABASE_URL 来自 .env（指向 compose 内的 db 服务名）。
+#   - scheduler 复用 scripts/cron-ingest.sh，每小时敲 web 的 /api/cron/ingest，
+#     自带 flock 并发锁，与 docs/cron.md 的"自有服务器"方案完全同源。
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hackcv}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hackcv_pwd_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-hackcv}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hackcv}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      args:
+        BUILD_DATABASE_URL: ${DATABASE_URL}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # 站点对外域名（驱动 sitemap/robots/RSS/OG/metadataBase/API 文档地址）
+      SITE_URL: ${SITE_URL:-https://ai.hackcv.com}
+    # .env 需含：DATABASE_URL=postgresql://hackcv:hackcv_pwd_change_me@db:5432/hackcv
+
+  scheduler:
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+      HACKCV_ENDPOINT: http://web:3000/api/cron/ingest
+    volumes:
+      - ./scripts/cron-ingest.sh:/cron-ingest.sh:ro
+    command: >
+      sh -c "apk add --no-cache dcron curl bash &&
+             echo '5 * * * * /bin/bash /cron-ingest.sh' > /etc/crontabs/root &&
+             crond -f -l 2"
+
+volumes:
+  pgdata:
