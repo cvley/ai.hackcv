@@ -128,14 +128,12 @@ async function fetchHN(src: Source): Promise<RawItem[]> {
     }));
 }
 
-async function fetchRss(src: Source): Promise<RawItem[]> {
-  const xml = await getText(src.url);
+function parseRssXml(xml: string, src: Source): RawItem[] {
   const blocks = xml.includes("<item>") ? xml.split("<item>").slice(1) : xml.split("<entry>").slice(1);
   const cat = src.category || "news";
   return blocks
     .map((b) => {
       const block = b.split(/<\/(item|entry)>/)[0];
-      const linkTag = block.match(/<link[^>]*>/i)?.[0] || "";
       const link = attr(block, "link", "href") || tag(block, "link") || tag(block, "id");
       const title = decode(tag(block, "title"));
       const desc = decode(tag(block, "description") || tag(block, "content:encoded") || tag(block, "summary"));
@@ -153,6 +151,21 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
       };
     })
     .filter(Boolean) as unknown as RawItem[];
+}
+
+async function fetchRss(src: Source): Promise<RawItem[]> {
+  return parseRssXml(await getText(src.url), src);
+}
+
+// Twitter/X via xcancel（Nitter 实例）。需伪装 RSS reader UA，否则返回
+// "RSS reader not yet whitelisted!"。实测 Inoreader / FreshRSS / Tiny Tiny RSS UA 可用。
+export async function fetchTwitter(src: Source): Promise<RawItem[]> {
+  const r = await fetch(src.url, {
+    headers: { "user-agent": "Inoreader/1.0 (+https://inoreader.com)" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return parseRssXml(await r.text(), src);
 }
 
 function fmtDuration(sec: number): string {
