@@ -6,7 +6,7 @@ info:
     实时 AI 资讯聚合平台 hackcv 的公开 REST API。所有接口位于 /api/public/，
     返回 JSON，支持分页、筛选与全文搜索。限流 60 次/分钟/IP。
 servers:
-  - url: https://hackcv.com/api/public
+  - url: https://ai.hackcv.com/api/public
 paths:
   /items:
     get:

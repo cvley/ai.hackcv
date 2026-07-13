@@ -20,7 +20,7 @@
 
 # 配置（crontab 文件顶部，权限 600 仅 root 可读）
 CRON_SECRET=在这里填写你的密钥
-HACKCV_ENDPOINT=https://hackcv.com
+HACKCV_ENDPOINT=https://ai.hackcv.com
 
 # 每小时第 5 分：常规触发（尊重 fetchInterval 节流）
 5 * * * * /opt/hackcv/cron-ingest.sh >> /var/log/hackcv-cron-ingest.log 2>&1

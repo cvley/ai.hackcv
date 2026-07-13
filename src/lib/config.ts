@@ -1,10 +1,14 @@
 // 站点级配置（替代 Hugo 的 config.toml）
+// 域名：默认子域名 ai.hackcv.com（与线上 hackcv.com 主站分离，互不影响）。
+// 可通过环境变量 SITE_URL 覆盖（部署到不同域名时只需改环境变量，无需改代码）。
+const SITE_URL = process.env.SITE_URL || "https://ai.hackcv.com";
+
 export const SITE = {
   name: "hackcv",
   title: "hackcv · 实时 AI 资讯聚合",
   description:
     "hackcv 聚合 arXiv 论文、GitHub 开源项目与全球 AI 行业资讯，由 LLM 精选打分，准实时更新。",
-  url: "https://hackcv.com",
+  url: SITE_URL,
   locale: "zh-CN",
   author: "hackcv",
   // 内容类型 → 中文标签

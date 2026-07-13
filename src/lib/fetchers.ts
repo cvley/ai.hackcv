@@ -28,7 +28,7 @@ function decode(s: string): string {
     .trim();
 }
 
-const UA = "hackcv-ingest/1.0 (+https://hackcv.com)";
+const UA = "hackcv-ingest/1.0 (+https://ai.hackcv.com)";
 
 async function getText(url: string, headers: Record<string, string> = {}): Promise<string> {
   const r = await fetch(url, {

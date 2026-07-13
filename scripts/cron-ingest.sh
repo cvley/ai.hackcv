@@ -11,12 +11,12 @@
 #
 # 依赖：curl、flock（均随 util-linux / 主流发行版自带）
 # 环境变量：
-#   HACKCV_ENDPOINT  采集接口基址，默认 https://hackcv.com
+#   HACKCV_ENDPOINT  采集接口基址，默认 https://ai.hackcv.com
 #   CRON_SECRET      必填，须与部署站点的 CRON_SECRET 环境变量一致
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-ENDPOINT="${HACKCV_ENDPOINT:-https://hackcv.com}/api/cron/ingest"
+ENDPOINT="${HACKCV_ENDPOINT:-https://ai.hackcv.com}/api/cron/ingest"
 SECRET="${CRON_SECRET:?请在环境变量中设置 CRON_SECRET（需与站点部署环境一致）}"
 LOCK="/tmp/hackcv-cron-ingest.lock"
 LOG="/var/log/hackcv-cron-ingest.log"

@@ -11,7 +11,7 @@ export default function AgentPage() {
 
       <h2>基线说明</h2>
       <ul>
-        <li>Base URL：<code>https://hackcv.com/api/public</code></li>
+        <li>Base URL：<code>https://ai.hackcv.com/api/public</code></li>
         <li>限流：每个 IP 60 次 / 分钟（RSS 30 次 / 分钟）</li>
         <li>守规 AI 爬虫（GPTBot / ClaudeBot / PerplexityBot）已被 robots.txt 明确放行</li>
         <li>时间与日期统一使用 ISO 8601 / <code>YYYY-MM-DD</code></li>
@@ -29,13 +29,13 @@ GET /tags            标签列表（含计数）
 GET /img-proxy       图片代理（HMAC 签名，防滥用）`}</pre>
 
       <h2>示例：获取今日精选</h2>
-      <pre>{`curl https://hackcv.com/api/public/items?mode=selected&take=10
+      <pre>{`curl https://ai.hackcv.com/api/public/items?mode=selected&take=10
 
 # 指定日期简报
-curl https://hackcv.com/api/public/daily/2026-07-10
+curl https://ai.hackcv.com/api/public/daily/2026-07-10
 
 # 搜索「大模型」
-curl "https://hackcv.com/api/public/search?q=大模型"`}</pre>
+curl "https://ai.hackcv.com/api/public/search?q=大模型"`}</pre>
 
       <h2>数据模型（节选）</h2>
       <pre>{`Item {
