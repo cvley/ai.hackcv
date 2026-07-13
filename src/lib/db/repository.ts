@@ -186,6 +186,19 @@ export function getCategories(): Category[] {
   return CATEGORIES;
 }
 
+// 以 Asia/Shanghai(UTC+8) 计算「今天」的日期串（YYYY-MM-DD）。
+// 简报面向中文读者，按北京时间归日，避免 UTC 归日在本地凌晨错位。
+function todayCst(): string {
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+// 某个 CST 日历日对应的 UTC 时间边界（用于按 collectedAt 过滤）。
+function cstDayBounds(dateCst: string): { start: Date; end: Date } {
+  return {
+    start: new Date(`${dateCst}T00:00:00.000+08:00`),
+    end: new Date(`${dateCst}T23:59:59.999+08:00`),
+  };
+}
+
 function buildDaily(date: string, items: Item[]): Daily {
   const sections: Section[] = [
     { label: "arXiv 最新论文", type: "paper", items: items.filter((i) => i.type === "paper") },
@@ -194,8 +207,9 @@ function buildDaily(date: string, items: Item[]): Daily {
   ];
   const total = items.length;
   const lead = [...items].sort((a, b) => b.score - a.score)[0];
-  const dayStart = new Date(`${date}T00:00:00Z`).toISOString();
-  const dayEnd = new Date(`${date}T23:59:59Z`).toISOString();
+  const { start, end } = cstDayBounds(date);
+  const dayStart = start.toISOString();
+  const dayEnd = end.toISOString();
   return {
     date,
     generatedAt: dayEnd,
@@ -212,7 +226,7 @@ function buildDaily(date: string, items: Item[]): Daily {
 }
 
 export async function getDaily(date?: string): Promise<Daily | null> {
-  const target = date ?? new Date().toISOString().slice(0, 10);
+  const target = date ?? todayCst();
   const dayItems = (await allItems()).filter((i) => i.dailyDate === target).sort(byNewest);
   if (dayItems.length === 0) return null;
   return buildDaily(target, dayItems);
@@ -563,16 +577,17 @@ export async function getTokenStats(): Promise<TokenStats> {
 
 /**
  * 生成（或刷新）某日的 AI 研究简报：
- * 将该日已发布且精选的条目标记为 dailyDate = date，随后由 getDaily 组装。
+ * 将该日「收录（collectedAt）」且精选的条目标记为 dailyDate = date，随后由 getDaily 组装。
+ * 按收录日归日（而非原始 publishedAt）——今日收录的精选内容即今日简报，
+ * 这样每次采集都能产出简报，且不会因论文原始发布日分散而漏项。
  */
 export async function generateDaily(date?: string): Promise<Daily | null> {
-  const target = date ?? new Date().toISOString().slice(0, 10);
-  const dayStart = new Date(`${target}T00:00:00Z`);
-  const dayEnd = new Date(`${target}T23:59:59Z`);
+  const target = date ?? todayCst();
+  const { start, end } = cstDayBounds(target);
   await prisma.item.updateMany({
     where: {
       selected: true,
-      publishedAt: { gte: dayStart, lte: dayEnd },
+      collectedAt: { gte: start, lte: end },
     },
     data: { dailyDate: target },
   });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runIngestion } from "@/lib/ingest";
+import { generateDaily } from "@/lib/db/repository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,14 @@ export async function POST(req: NextRequest) {
   // ?force=1 时绕过 fetchInterval 节流，做全量补偿（用于每日兜底）
   const force = req.nextUrl.searchParams.get("force") === "1";
   const result = await runIngestion({ force });
-  return NextResponse.json({ ok: true, force, result });
+  // 采集完立即生成/刷新「今日简报」，使 /daily 自动填充，无需后台手动触发
+  const daily = await generateDaily();
+  return NextResponse.json({
+    ok: true,
+    force,
+    result,
+    daily: daily ? { date: daily.date, totalItems: daily.stats.totalItems } : null,
+  });
 }
 
 // 便于外部健康检查
