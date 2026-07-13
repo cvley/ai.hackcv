@@ -13,6 +13,16 @@ interface Entry {
 // 空库兜底：首次部署未灌种子时仍展示历史记录
 const FALLBACK: Entry[] = [
   {
+    version: "2026-07-13",
+    title: "开发者中心与热门推荐 CLI / Skill 上线",
+    items: [
+      "新增开发者中心 /developers，统一收纳 REST API、CLI、Agent 技能与专题合集入口",
+      "新增 CLI 文档页 /cli：主打 hackcv hot 一键获取今日热门推荐",
+      "新增 AI Agent 技能页 /skill：封装公开 API 的 SKILL.md，直接返回带链接的热门推荐",
+      "llms.txt 增补 /hot 热门接口与 CLI / Skill 引用，便于 Agent 自动发现",
+    ],
+  },
+  {
     version: "2026-07-12",
     title: "定时采集与信源节流",
     items: [

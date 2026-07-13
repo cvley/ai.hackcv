@@ -31,6 +31,20 @@ hackcv 是实时 AI 资讯聚合平台，每天从 arXiv、GitHub、Hacker News 
 - news    : 全球 AI 行业资讯（多信源归组）
 
 每条内容包含：标题、中文翻译、摘要、推荐理由、信源列表、精选分数(0-100)、标签与时间。
+
+## 热门推荐（推荐给 Agent 的首选能力）
+
+想知道「现在 AI 圈最火 / 最值得看的是什么」，直接调用热点接口：
+
+- GET /hot?take=10                     今日热门推荐（排序 = 信源数 × 精选分 × 时间衰减）
+- GET /hot?take=10&type=paper          按类型：paper / project / news
+- GET /daily                           每日必读简报（论文/项目/资讯）
+
+## CLI 与 Agent 技能
+
+- CLI（命令行）：${SITE.url}/cli —— 安装 npm i -g hackcv，主命令 hackcv hot 一键获取今日热门推荐。
+- Skill（AI Agent 技能）：${SITE.url}/skill —— 封装本 API 的 SKILL.md，装到 Claude / CodeBuddy / Codex 后可直接返回带 permalink 的热门推荐。
+- 开发者中心：${SITE.url}/developers
 `;
 
 export const dynamic = "force-static";
