@@ -16,11 +16,12 @@ interface Item {
   publishedAt: string;
 }
 
-const TYPE_LABEL: Record<string, string> = { paper: "论文", project: "项目", news: "资讯" };
+const TYPE_LABEL: Record<string, string> = { paper: "论文", project: "项目", news: "资讯", video: "视频" };
 const TYPE_BADGE: Record<string, string> = {
   paper: "badge-paper",
   project: "badge-project",
   news: "badge-news",
+  video: "badge-video",
 };
 
 export default function AdminItems() {

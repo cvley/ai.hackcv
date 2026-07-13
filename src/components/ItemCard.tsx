@@ -8,6 +8,7 @@ const TYPE_BADGE: Record<string, string> = {
   paper: "badge-paper",
   project: "badge-project",
   news: "badge-news",
+  video: "badge-video",
 };
 
 export default function ItemCard({ item, compact = false }: { item: Item; compact?: boolean }) {
@@ -24,6 +25,14 @@ export default function ItemCard({ item, compact = false }: { item: Item; compac
           <span className="badge badge-src">{item.sources.length} 信源</span>
         )}
       </div>
+
+      {item.videoFields?.thumbnail && (
+        <a className="video-thumb" href={item.url} target="_blank" rel="noopener noreferrer">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={item.videoFields.thumbnail} alt={item.title} loading="lazy" />
+          {item.videoFields.duration && <span className="dur">{item.videoFields.duration}</span>}
+        </a>
+      )}
 
       <h3 className="title">
         <Link href={`/items/${item.id}`}>{item.title}</Link>
@@ -69,6 +78,16 @@ export default function ItemCard({ item, compact = false }: { item: Item; compac
           )}
           {item.paperFields.authors?.length > 0 && (
             <span>作者：{item.paperFields.authors.join("、")}</span>
+          )}
+        </div>
+      )}
+
+      {item.videoFields && (
+        <div className="metrics">
+          <span>📺 {item.videoFields.channel}</span>
+          <span>▶ {formatCount(item.videoFields.viewCount)} 次观看</span>
+          {typeof item.videoFields.likeCount === "number" && (
+            <span>♥ {formatCount(item.videoFields.likeCount)}</span>
           )}
         </div>
       )}

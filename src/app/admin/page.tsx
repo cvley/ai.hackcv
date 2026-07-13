@@ -10,6 +10,7 @@ interface Stats {
   papers: number;
   projects: number;
   news: number;
+  videos: number;
   dailies: number;
   sources: number;
   enabledSources: number;
@@ -49,6 +50,7 @@ export default function AdminHome() {
     ["论文", stats.papers, "📄"],
     ["开源项目", stats.projects, "💻"],
     ["行业资讯", stats.news, "📰"],
+    ["AI 视频", stats.videos, "📺"],
     ["简报天数", stats.dailies, "🗓️"],
     ["已启用信源", `${stats.enabledSources}/${stats.sources}`, "🔌"],
     ["最高精选分", stats.topScore, "🔥"],

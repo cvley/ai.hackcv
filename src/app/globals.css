@@ -153,6 +153,10 @@ main { padding: 24px 0 96px; min-height: 60vh; }
 .badge-news { background: var(--green-weak); color: var(--green); }
 .badge-score { background: var(--orange-weak); color: var(--orange); }
 .badge-src { background: var(--surface-alt); color: var(--muted); }
+.badge-video { background: var(--red-weak); color: var(--red); }
+.video-thumb { position: relative; display: block; margin: 0 0 12px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+.video-thumb img { width: 100%; height: 190px; object-fit: cover; display: block; }
+.video-thumb .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.78); color: #fff; font-size: 12px; padding: 1px 7px; border-radius: 5px; font-variant-numeric: tabular-nums; }
 .tag { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 12px; background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
 .tag:hover { color: var(--primary); border-color: var(--primary); }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }

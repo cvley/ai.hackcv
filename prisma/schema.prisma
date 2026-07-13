@@ -36,6 +36,7 @@ model Item {
   paperFields   Json?
   projectFields Json?
   newsFields    Json?
+  videoFields   Json?
   attribution   Json
   createdAt     DateTime
   updatedAt     DateTime

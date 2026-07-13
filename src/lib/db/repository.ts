@@ -44,6 +44,7 @@ function rowToItem(r: any): Item {
     paperFields: r.paperFields ?? undefined,
     projectFields: r.projectFields ?? undefined,
     newsFields: r.newsFields ?? undefined,
+    videoFields: r.videoFields ?? undefined,
     attribution:
       r.attribution && typeof r.attribution === "object"
         ? r.attribution
@@ -90,6 +91,7 @@ function toCommon(r: Item): Prisma.ItemUpdateInput {
   c.paperFields = r.paperFields ? r.paperFields : Prisma.JsonNull;
   c.projectFields = r.projectFields ? r.projectFields : Prisma.JsonNull;
   c.newsFields = r.newsFields ? r.newsFields : Prisma.JsonNull;
+  c.videoFields = r.videoFields ? r.videoFields : Prisma.JsonNull;
   return c as Prisma.ItemUpdateInput;
 }
 
@@ -204,6 +206,7 @@ function buildDaily(date: string, items: Item[]): Daily {
     { label: "arXiv 最新论文", type: "paper", items: items.filter((i) => i.type === "paper") },
     { label: "GitHub 热门开源项目", type: "project", items: items.filter((i) => i.type === "project") },
     { label: "精选 AI 行业资讯", type: "news", items: items.filter((i) => i.type === "news") },
+    { label: "YouTube 热门 AI 视频", type: "video", items: items.filter((i) => i.type === "video") },
   ];
   const total = items.length;
   const lead = [...items].sort((a, b) => b.score - a.score)[0];
@@ -353,6 +356,7 @@ export async function createItem(input: ItemInput): Promise<Item> {
     paperFields: input.paperFields,
     projectFields: input.projectFields,
     newsFields: input.newsFields,
+    videoFields: input.videoFields,
     attribution: { source: "hackcv", canonical: `${SITE.url}/items/${id}` },
     createdAt: now,
     updatedAt: now,
@@ -463,6 +467,7 @@ export interface AdminStats {
   papers: number;
   projects: number;
   news: number;
+  videos: number;
   dailies: number;
   sources: number;
   enabledSources: number;
@@ -470,12 +475,13 @@ export interface AdminStats {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const [total, selected, papers, projects, news, sources, enabledSources] = await Promise.all([
+  const [total, selected, papers, projects, news, videos, sources, enabledSources] = await Promise.all([
     prisma.item.count(),
     prisma.item.count({ where: { selected: true } }),
     prisma.item.count({ where: { type: "paper" } }),
     prisma.item.count({ where: { type: "project" } }),
     prisma.item.count({ where: { type: "news" } }),
+    prisma.item.count({ where: { type: "video" } }),
     prisma.source.count(),
     prisma.source.count({ where: { enabled: true } }),
   ]);
@@ -491,6 +497,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     papers,
     projects,
     news,
+    videos,
     dailies,
     sources,
     enabledSources,

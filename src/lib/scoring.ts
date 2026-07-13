@@ -27,6 +27,7 @@ export function computeScore(item: Pick<Item, "sources" | "type" | "publishedAt"
   // 内容类型微调
   if (item.type === "paper") score += 5;
   else if (item.type === "project") score += 3;
+  else if (item.type === "video") score += 4;
 
   // 已精选内容保底
   if (item.selected) score = Math.max(score, 60);
@@ -34,9 +35,14 @@ export function computeScore(item: Pick<Item, "sources" | "type" | "publishedAt"
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-/** 热点热度：信源数 × 分数 × 时间衰减（重构方案 §8.2 步骤6） */
+/** 热点热度：信源数 × 分数 × 时间衰减；视频叠加播放量（对数）加成（重构方案 §8.2 步骤6） */
 export function hotness(item: Item): number {
   const ageHours = (Date.now() - new Date(item.publishedAt).getTime()) / 3_600_000;
   const decay = Math.exp(-ageHours / 48); // 48h 半衰期
-  return item.sources.length * item.score * decay;
+  let h = item.sources.length * item.score * decay;
+  if (item.type === "video" && item.videoFields?.viewCount) {
+    const v = Math.log10(Math.max(item.videoFields.viewCount, 1));
+    h *= 1 + v / 3; // 播放量对数加成，约 0 ~ 2.3x
+  }
+  return h;
 }

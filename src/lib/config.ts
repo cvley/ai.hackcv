@@ -16,6 +16,7 @@ export const SITE = {
     paper: "论文",
     project: "开源项目",
     news: "行业资讯",
+    video: "AI 视频",
   } as Record<string, string>,
   // 默认分页
   defaultTake: 20,

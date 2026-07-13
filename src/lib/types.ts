@@ -1,9 +1,9 @@
 // hackcv 内容模型 —— 参考重构方案 §7 数据模型设计
 // 内容数据已正式持久化到 PostgreSQL（Prisma 访问，见 lib/db/repository.ts 与 prisma/schema.prisma）
 
-export type ItemType = "paper" | "project" | "news";
+export type ItemType = "paper" | "project" | "news" | "video";
 
-export type SourceType = "rss" | "api" | "scraper" | "manual";
+export type SourceType = "rss" | "api" | "scraper" | "manual" | "youtube";
 
 export interface PaperFields {
   arxivId: string;
@@ -22,6 +22,15 @@ export interface ProjectFields {
 
 export interface NewsFields {
   sourceUrls: string[];
+}
+
+export interface VideoFields {
+  channel: string; // 频道名（如 "Two Minute Papers"）
+  channelId: string; // YouTube channel_id（UC...）
+  viewCount: number; // 播放量
+  likeCount?: number;
+  duration?: string; // 形如 "12:34" 或 "1:02:03"
+  thumbnail?: string; // 缩略图 URL
 }
 
 export interface Attribution {
@@ -50,6 +59,7 @@ export interface Item {
   paperFields?: PaperFields;
   projectFields?: ProjectFields;
   newsFields?: NewsFields;
+  videoFields?: VideoFields;
   attribution: Attribution;
   createdAt: string;
   updatedAt: string;

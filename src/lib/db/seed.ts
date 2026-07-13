@@ -27,6 +27,7 @@ export const CATEGORIES: Category[] = [
   { slug: "company", label: "公司与产品", type: "news", description: "厂商动态与新品" },
   { slug: "policy", label: "政策与监管", type: "news", description: "法规与治理" },
   { slug: "research", label: "研究进展", type: "news", description: "学界与业界突破" },
+  { slug: "ai-video", label: "AI 视频", type: "video", description: "YouTube 热门 AI 频道" },
 ];
 
 interface Raw {

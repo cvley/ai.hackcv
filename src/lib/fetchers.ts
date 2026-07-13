@@ -159,6 +159,68 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
     .filter(Boolean) as unknown as RawItem[];
 }
 
+function fmtDuration(sec: number): string {
+  if (!sec || sec < 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
+}
+
+// YouTube 频道 RSS（Atom 风格：<entry>）。无需 API Key，qq_claw 实测可直连。
+// 字段：<yt:videoId> 视频ID、<published>、<author><name> 频道名、
+// <media:group><media:thumbnail url> 缩略图、<media:community><media:statistics views/likes>、
+// <yt:duration seconds> 时长。
+export async function fetchYoutube(src: Source): Promise<RawItem[]> {
+  const channelId = (src.url.match(/channel_id=([^&]+)/) || [])[1] || "";
+  const xml = await getText(src.url);
+  const entries = xml.includes("<entry>") ? xml.split("<entry>").slice(1) : [];
+  return entries
+    .map((e) => {
+      const block = e.split(/<\/entry>/)[0];
+      const videoId =
+        tag(block, "yt:videoId") ||
+        (attr(block, "link", "href").match(/[?&]v=([^&]+)/) || [])[1] ||
+        "";
+      const title = decode(tag(block, "title"));
+      const link =
+        attr(block, "link", "href") ||
+        (videoId ? `https://www.youtube.com/watch?v=${videoId}` : "");
+      const pub = tag(block, "published") || tag(block, "updated");
+      const channel = decode(tag(block, "name")) || src.name;
+      const thumbnail = attr(block, "media:thumbnail", "url");
+      const durationRaw =
+        attr(block, "yt:duration", "seconds") || attr(block, "media:content", "duration");
+      const duration = durationRaw ? fmtDuration(Number(durationRaw)) : undefined;
+      const viewsRaw = attr(block, "media:statistics", "views");
+      const views = viewsRaw ? Number(viewsRaw) : 0;
+      const likesRaw = attr(block, "media:statistics", "likes");
+      const likes = likesRaw ? Number(likesRaw) : undefined;
+      if (!title || !link || !videoId) return null;
+      return {
+        url: link,
+        type: "video" as ItemType,
+        source: channel,
+        category: "ai-video",
+        title,
+        summary: `YouTube · ${channel}`,
+        publishedAt: pub ? new Date(pub).toISOString() : undefined,
+        videoFields: {
+          channel,
+          channelId,
+          viewCount: views,
+          likeCount: likes,
+          duration,
+          thumbnail: thumbnail || undefined,
+        },
+        tags: ["ai-video", channel],
+      };
+    })
+    .filter(Boolean) as unknown as RawItem[];
+}
+
 export const FETCHERS: Record<string, (src: Source) => Promise<RawItem[]>> = {
   "arxiv-ai": fetchArxiv,
   "github-trending": fetchGithub,
