@@ -35,11 +35,26 @@ function decode(s: string): string {
 const UA = "hackcv-ingest/1.0 (+https://ai.hackcv.com)";
 
 async function getText(url: string, headers: Record<string, string> = {}): Promise<string> {
-  const r = await fetch(url, {
-    headers: { "user-agent": UA, ...headers },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  let r: Response;
+  try {
+    r = await fetch(url, {
+      headers: { "user-agent": UA, ...headers },
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (e) {
+    throw new Error(`fetch failed: ${e instanceof Error ? e.message : e} <- ${url}`);
+  }
+  if (!r.ok) {
+    let body = "";
+    try {
+      body = (await r.text()).slice(0, 300);
+    } catch {
+      /* ignore body read error */
+    }
+    throw new Error(
+      `HTTP ${r.status} ${r.statusText} <- ${url}${body ? " | body: " + body : ""}`,
+    );
+  }
   return r.text();
 }
 
@@ -60,7 +75,7 @@ function arxivCategoryToSlug(primary: string): string {
 
 async function fetchArxiv(src: Source): Promise<RawItem[]> {
   const url =
-    "http://export.arxiv.org/api/query?search_query=" +
+    "https://export.arxiv.org/api/query?search_query=" +
     encodeURIComponent("cat:cs.AI OR cat:cs.CL OR cat:cs.LG OR cat:cs.CV") +
     "&sortBy=submittedDate&sortOrder=descending&max_results=24";
   const xml = await getText(url);
@@ -98,9 +113,21 @@ async function fetchArxiv(src: Source): Promise<RawItem[]> {
 }
 
 async function fetchGithub(src: Source): Promise<RawItem[]> {
-  const q = encodeURIComponent("topic:llm topic:ai created:>2022-01-01");
-  const url = `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=15`;
-  const d = JSON.parse(await getText(url, { accept: "application/vnd.github+json" }));
+  // 近期新建 + 高星的 AI 仓库，保证每天都有新内容。
+  // 旧 query 用 created:>2022-01-01 + sort=stars 是「全时段最高星」，每天返回同一批
+  // 老仓库 → 去重层全判为已存在 → created=0 → 日报「GitHub 项目」段恒空。
+  // 改用滚动 14 天窗口 + 单 topic:ai（去掉 llm AND ai 双标签限制，覆盖更广）。
+  const since = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+  const q = encodeURIComponent(`topic:ai created:>${since}`);
+  const url = `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=20`;
+  const headers: Record<string, string> = { accept: "application/vnd.github+json" };
+  // 未配置 GITHUB_TOKEN 时走匿名，搜索接口限流 10 次/分（共享 IP 易触发 403）。
+  // 配置后升到 30 次/分、5000 次/时，并带鉴权身份。
+  if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  const d = JSON.parse(await getText(url, headers));
+  if (!d.items || !Array.isArray(d.items)) {
+    throw new Error(`GitHub search 返回异常（可能限流）: ${JSON.stringify(d).slice(0, 200)}`);
+  }
   return (d.items || []).map((r: any) => ({
     url: r.html_url,
     type: "project" as ItemType,

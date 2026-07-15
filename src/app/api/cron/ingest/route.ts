@@ -20,6 +20,17 @@ export async function POST(req: NextRequest) {
   const result = await runIngestion({ force });
   // 采集完立即生成/刷新「今日简报」，使 /daily 自动填充，无需后台手动触发
   const daily = await generateDaily();
+  console.log(
+    `[cron/ingest] force=${force} ok=${result.ok} fetched=${result.totalFetched} ` +
+      `created=${result.totalCreated} skipped=${result.totalSkipped} throttled=${result.totalThrottled} ` +
+      `errors=${result.errors.length} bySource=${JSON.stringify(result.bySource)}`,
+  );
+  if (daily) {
+    const byType = Object.fromEntries(daily.sections.map((s) => [s.type, s.items.length]));
+    console.log(`[cron/daily] date=${daily.date} total=${daily.stats.totalItems} byType=${JSON.stringify(byType)}`);
+  } else {
+    console.log(`[cron/daily] no daily generated (0 items collected today & selected)`);
+  }
   return NextResponse.json({
     ok: true,
     force,

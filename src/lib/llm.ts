@@ -3,6 +3,7 @@ import { computeScore } from "./scoring";
 
 export interface ScoreResult {
   score: number; // 0-100 精选分
+  ai?: boolean; // 内容是否真的与 AI/机器学习/大模型相关（内容级相关性把关）
   summary?: string; // 中文摘要（若原文无）
   title_zh?: string; // 中文标题（若原文为英文）
   tags?: string[]; // 中文标签
@@ -67,11 +68,12 @@ export async function scoreItem(partial: Partial<Item>): Promise<ScoreResult> {
   }
 
   const prompt =
-    "你是 AI 资讯精选编辑。请评估下面这条内容的「精选价值」，按 0-100 打分" +
-    "（100=必读，80+=强烈推荐，60+=值得看，<60=一般）。\n" +
-    "同时：用一句不超过 35 字的中文写摘要（summary）；若标题为英文，给出简短中文标题（title_zh），否则省略；" +
-    "提取 1-4 个中文标签（tags，聚焦技术主题）。\n" +
-    "只输出 JSON，不要其它文字：{\"score\":<int>,\"summary\":<str>,\"title_zh\":<str|null>,\"tags\":[<str>]}\n\n" +
+    "你是 AI 资讯精选编辑。请评估下面这条内容：\n" +
+    "1) 是否真的与 AI / 机器学习 / 大模型相关（ai: true 或 false）；\n" +
+    "2) 按「精选价值」0-100 打分（100=必读，80+=强烈推荐，60+=值得看，<60=一般）；\n" +
+    "3) 用一句不超过 35 字的中文写摘要（summary）；若标题为英文给简短中文标题（title_zh），否则省略；\n" +
+    "4) 提取 1-4 个中文标签（tags，聚焦技术主题）。\n" +
+    "只输出 JSON，不要其它文字：{\"ai\":<bool>,\"score\":<int>,\"summary\":<str>,\"title_zh\":<str|null>,\"tags\":[<str>]}\n\n" +
     "待评估内容：\n" +
     text.slice(0, 1200);
 
@@ -99,6 +101,7 @@ function extractJson(raw: string): ScoreResult | null {
     const o = JSON.parse(m[0]);
     return {
       score: Number(o.score) || 0,
+      ai: typeof o.ai === "boolean" ? o.ai : undefined,
       summary: typeof o.summary === "string" ? o.summary : undefined,
       title_zh: o.title_zh ? String(o.title_zh) : undefined,
       tags: Array.isArray(o.tags) ? o.tags.map(String).slice(0, 4) : undefined,

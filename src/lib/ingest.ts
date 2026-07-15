@@ -68,6 +68,7 @@ export async function runIngestion(opts?: {
   for (const src of sources) {
     const stat: IngestSourceStat = { fetched: 0, created: 0, skipped: 0, throttled: 0, ok: true };
     result.bySource[src.id] = stat;
+    console.log(`[ingest] start src=${src.id} type=${src.type} url=${src.url} force=${!!opts?.force}`);
 
     // fetchInterval 节流：默认开启；显式指定 sourceIds / force 时跳过（后台手动抓取应强制执行）。
     // 这样单次每小时 cron 即可自动区分——新闻源(3600s)每小时重抓，论文/GitHub(86400s)每 24h 才抓一次。
@@ -77,6 +78,7 @@ export async function runIngestion(opts?: {
       if (last && Date.now() - last < intervalMs) {
         stat.throttled++;
         result.totalThrottled++;
+        console.log(`[ingest] skip(throttle) src=${src.id} lastFetch=${src.lastFetch ?? "never"} interval=${(src.fetchInterval || 86400)}s`);
         continue;
       }
     }
@@ -85,17 +87,20 @@ export async function runIngestion(opts?: {
     if (!fetcher) continue;
     try {
       const raws = await fetcher(src);
+      console.log(`[ingest] fetched src=${src.id} rawCount=${raws.length}`);
       for (const r of raws.slice(0, MAX_PER_SOURCE)) {
         stat.fetched++;
         result.totalFetched++;
         if (urlSet.has(r.url) || titleSet.has(r.title.toLowerCase())) {
+          console.log(`[ingest] skip(dup) src=${src.id} title="${r.title.slice(0, 60)}"`);
           stat.skipped++;
           result.totalSkipped++;
           continue;
         }
-        const scored = opts?.skipScore
-          ? { score: 50 }
-          : await scoreItem(r);
+        const scored: { score: number; ai?: boolean; summary?: string; title_zh?: string; tags?: string[]; usage?: any } =
+          opts?.skipScore
+            ? { score: 50, ai: undefined }
+            : await scoreItem(r);
         if (scored.usage) {
           const acc =
             (usageAcc[scored.usage.provider] ||= {
@@ -109,14 +114,26 @@ export async function runIngestion(opts?: {
           acc.totalTokens += scored.usage.totalTokens;
           acc.items++;
         }
+        // 内容级 AI 相关性把关 + 预筛源入选保底：
+        //  - ai===false：明确非 AI 内容，直接不入选（即便质量再高）
+        //  - 预筛 AI 信源（arXiv 分类 / GitHub topic）：L1 已保证 AI 相关性，给入选保底，不被 55 分卡掉
+        //  - 其它信源：按精选分阈值入选
+        const isPreVettedAi = src.id === "arxiv-ai" || src.id === "github-trending";
+        let selected: boolean;
+        if (scored.ai === false) selected = false;
+        else if (isPreVettedAi) selected = true;
+        else selected = scored.score >= settings.autoSelectThreshold;
         const item = await createItem({
           ...r,
           score: scored.score,
           summary: r.summary || scored.summary || "",
           title_zh: r.title_zh || scored.title_zh,
           tags: r.tags && r.tags.length ? r.tags : scored.tags || [],
-          selected: scored.score >= settings.autoSelectThreshold,
+          selected,
         });
+        console.log(
+          `[ingest] create src=${src.id} score=${scored.score} ai=${scored.ai ?? "-"} selected=${selected} title="${r.title.slice(0, 50)}"`,
+        );
         urlSet.add(item.url);
         titleSet.add(item.title.toLowerCase());
         stat.created++;
@@ -124,14 +141,21 @@ export async function runIngestion(opts?: {
       }
       await touchSource(src.id, new Date().toISOString());
     } catch (e) {
+      const detail = e instanceof Error ? (e.stack || e.message) : String(e);
       stat.ok = false;
       stat.error = String(e instanceof Error ? e.message : e);
       result.errors.push(`${src.id}: ${stat.error}`);
       result.ok = false;
+      console.error(`[ingest] ERROR src=${src.id}: ${stat.error}\n${detail}`);
     }
   }
 
   result.finishedAt = new Date().toISOString();
+  console.log(
+    `[ingest] DONE ok=${result.ok} fetched=${result.totalFetched} created=${result.totalCreated} ` +
+      `skipped=${result.totalSkipped} throttled=${result.totalThrottled} errors=${result.errors.length} ` +
+      `bySource=${JSON.stringify(result.bySource)}`,
+  );
 
   // 采集产生的 token 消耗按供应商汇总入库（供后台统计）
   const today = new Date().toISOString().slice(0, 10);
