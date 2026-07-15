@@ -14,6 +14,7 @@ export default function Header() {
           <Link href="/">首页</Link>
           <Link href="/all">全部</Link>
           <Link href="/daily">简报</Link>
+          <Link href="/hot">热门</Link>
           <Link href="/developers">开发者</Link>
           <Link href="/about">关于</Link>
         </nav>

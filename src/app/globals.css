@@ -126,6 +126,8 @@ main { padding: 24px 0 96px; min-height: 60vh; }
 .hot-item .meta { flex: 1; min-width: 0; }
 .hot-item .t { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hot-item .s { font-size: 12px; color: var(--muted); }
+.hot-desc { margin: -4px 0 12px; font-size: 13px; color: var(--muted); }
+.hot-empty { padding: 28px 14px; text-align: center; color: var(--muted); font-size: 14px; }
 
 /* ---------- Item card ---------- */
 .feed { display: flex; flex-direction: column; gap: 12px; }
