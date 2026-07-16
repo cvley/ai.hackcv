@@ -15,8 +15,10 @@ const args = process.argv.slice(2);
 const limit = Math.min(50, Number(args.find((a) => a.startsWith("--limit="))?.split("=")[1]) || 50);
 
 async function main() {
-  const papers = (await getItems({ type: "paper", hasInterpretation: false, take: limit })).items;
-  const projects = (await getItems({ type: "project", hasInterpretation: false, take: limit })).items;
+  // 每类分配一半预算，保证 paper 与 project 都能被处理（否则 papers 占满 limit 会把 projects 挤掉）。
+  const perType = Math.ceil(limit / 2);
+  const papers = (await getItems({ type: "paper", hasInterpretation: false, take: perType })).items;
+  const projects = (await getItems({ type: "project", hasInterpretation: false, take: perType })).items;
   const targets = [...papers, ...projects].slice(0, limit);
   console.log(`[backfill-interpret] candidates=${targets.length}`);
 
