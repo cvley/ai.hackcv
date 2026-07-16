@@ -136,7 +136,7 @@ async function fetchGithub(src: Source): Promise<RawItem[]> {
     title: r.full_name,
     summary: decode(r.description || ""),
     publishedAt: r.created_at ? new Date(r.created_at).toISOString() : undefined,
-    projectFields: { stars: r.stargazers_count, language: r.language, owner: r.owner?.login },
+    projectFields: { repo: r.full_name, stars: r.stargazers_count, language: r.language, owner: r.owner?.login },
     tags: [r.language, "github"].filter(Boolean) as string[],
   }));
 }

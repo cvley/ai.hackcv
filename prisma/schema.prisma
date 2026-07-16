@@ -37,6 +37,7 @@ model Item {
   projectFields Json?
   newsFields    Json?
   videoFields   Json?
+  interpretation Json? // 论文/代码解读：{ kind, summary, fields, generatedAt, provider }
   attribution   Json
   createdAt     DateTime
   updatedAt     DateTime

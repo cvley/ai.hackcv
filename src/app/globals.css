@@ -156,6 +156,30 @@ main { padding: 24px 0 96px; min-height: 60vh; }
 .badge-score { background: var(--orange-weak); color: var(--orange); }
 .badge-src { background: var(--surface-alt); color: var(--muted); }
 .badge-video { background: var(--red-weak); color: var(--red); }
+.badge-interp { background: var(--teal-weak); color: var(--teal); }
+
+/* ---------- AI 解读（详情页 / 卡片） ---------- */
+.interpret { margin-top: 10px; padding: 12px 14px; background: var(--surface-alt); border-left: 3px solid var(--teal); border-radius: 8px; }
+.interpret .lab { color: var(--teal); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.interpret .lab .kind { font-size: 11px; font-weight: 600; background: var(--teal-weak); color: var(--teal); padding: 1px 7px; border-radius: 999px; }
+.interpret-summary { margin: 8px 0 10px; font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.6; }
+.interpret-fields { margin: 0; display: flex; flex-direction: column; gap: 9px; }
+.if-row { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: start; }
+.if-row dt { color: var(--muted); font-size: 13px; flex-shrink: 0; padding-top: 1px; }
+.if-row dd { margin: 0; font-size: 13px; color: var(--text); line-height: 1.65; }
+.if-list { display: flex; flex-direction: column; gap: 4px; }
+.if-item { display: list-item; margin-left: 18px; }
+.interpret-rec { border-left: 3px solid var(--teal); }
+.interpret-rec .lab { color: var(--teal); }
+
+/* ---------- 解读索引页 ---------- */
+.page-desc { color: var(--muted); font-size: 13px; margin: 8px 0 16px; line-height: 1.6; }
+.interpret-tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+.interpret-tabs button { padding: 7px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.interpret-tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.interpret-card { display: block; text-decoration: none; color: inherit; }
+.interpret-card:hover { border-color: var(--primary); }
+.interp-card-summary { font-size: 13px; color: var(--muted); margin-top: 6px; }
 .video-thumb { position: relative; display: block; margin: 0 0 12px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
 .video-thumb img { width: 100%; height: 190px; object-fit: cover; display: block; }
 .video-thumb .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.78); color: #fff; font-size: 12px; padding: 1px 7px; border-radius: 5px; font-variant-numeric: tabular-nums; }

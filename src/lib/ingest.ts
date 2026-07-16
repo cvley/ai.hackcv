@@ -3,10 +3,12 @@ import {
   getSettings,
   getExistingForIngest,
   createItem,
+  updateItem,
   touchSource,
   recordTokenUsage,
 } from "./db/repository";
 import { scoreItem } from "./llm";
+import { interpretItem } from "./interpret";
 import { FETCHERS, fetchYoutube, fetchTwitter } from "./fetchers";
 import type { Item } from "./types";
 
@@ -31,8 +33,11 @@ export interface IngestResult {
   errors: string[];
 }
 
-// 单个信源单次采集条数上限，避免某个 RSS 历史过大撑爆存储。
+  // 单个信源单次采集条数上限，避免某个 RSS 历史过大撑爆存储。
 const MAX_PER_SOURCE = 25;
+
+// 每次采集为 paper/project 生成解读的条数上限，控制 LLM 调用与成本。
+const INTERPRET_CAP = 12;
 
 // 运行一次采集：遍历已启用信源 → 抓取 → 去重 → LLM/启发式打分 → 入库。
 // 默认对每条都跑 scoreItem（无 key 自动降级到启发式，不产生费用）。
@@ -61,6 +66,9 @@ export async function runIngestion(opts?: {
   const urlSet = new Set(existingUrls);
   const titleSet = new Set(existingTitles);
   const settings = await getSettings();
+
+  // 本次新入选、待生成解读的 paper/project 候选
+  const itemsToInterpret: Item[] = [];
 
   // 按供应商累计本次采集产生的 token 消耗
   const usageAcc: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; items: number }> = {};
@@ -138,6 +146,10 @@ export async function runIngestion(opts?: {
         titleSet.add(item.title.toLowerCase());
         stat.created++;
         result.totalCreated++;
+        // 候选解读：新入选的论文 / 代码项目，且尚未有解读
+        if (selected && (item.type === "paper" || item.type === "project") && !item.interpretation) {
+          itemsToInterpret.push(item);
+        }
       }
       await touchSource(src.id, new Date().toISOString());
     } catch (e) {
@@ -156,6 +168,32 @@ export async function runIngestion(opts?: {
       `skipped=${result.totalSkipped} throttled=${result.totalThrottled} errors=${result.errors.length} ` +
       `bySource=${JSON.stringify(result.bySource)}`,
   );
+
+  // 解读步：对本次新入选的 paper/project 生成结构化解读（限量，避免一次性过多 LLM 调用）。
+  // 论文直接用已抓 abstract；代码项目额外拉 README 增强素材。失败/无结果不阻塞主流程。
+  let interpretCreated = 0;
+  let interpretFailed = 0;
+  const toInterpret = itemsToInterpret.slice(0, INTERPRET_CAP);
+  for (const it of toInterpret) {
+    try {
+      const interp = await interpretItem(it);
+      if (!interp) {
+        console.log(`[ingest] interpret skip(no result) id=${it.id} type=${it.type}`);
+        continue;
+      }
+      await updateItem(it.id, { interpretation: interp } as Partial<Item>);
+      interpretCreated++;
+      console.log(`[ingest] interpret created id=${it.id} kind=${interp.kind} provider=${interp.provider} summary="${interp.summary.slice(0, 40)}"`);
+    } catch (e) {
+      interpretFailed++;
+      console.error(`[ingest] interpret ERROR id=${it.id}: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  if (toInterpret.length > 0)
+    console.log(
+      `[ingest] interpret DONE created=${interpretCreated} failed=${interpretFailed} ` +
+        `candidates=${itemsToInterpret.length} ran=${toInterpret.length} cap=${INTERPRET_CAP}`,
+    );
 
   // 采集产生的 token 消耗按供应商汇总入库（供后台统计）
   const today = new Date().toISOString().slice(0, 10);

@@ -38,6 +38,15 @@ export interface Attribution {
   canonical: string;
 }
 
+// 论文 / 代码解读（结构化，由 LLM 生成）
+export interface Interpretation {
+  kind: "paper" | "project";
+  summary: string; // 一句话中文导读
+  fields: Record<string, string | string[]>; // 结构化解读项
+  generatedAt: string; // ISO
+  provider: string; // 实际生成供应商
+}
+
 export interface Item {
   id: string; // ULID/CUID
   type: ItemType;
@@ -60,6 +69,7 @@ export interface Item {
   projectFields?: ProjectFields;
   newsFields?: NewsFields;
   videoFields?: VideoFields;
+  interpretation?: Interpretation;
   attribution: Attribution;
   createdAt: string;
   updatedAt: string;

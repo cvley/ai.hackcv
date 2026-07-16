@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDaily } from "@/lib/db/repository";
 
 // GET /api/public/daily  —— 今日研究简报
+export const dynamic = "force-dynamic";
 export async function GET() {
   const daily = await getDaily();
   if (!daily) {

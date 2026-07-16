@@ -94,6 +94,109 @@ export async function scoreItem(partial: Partial<Item>): Promise<ScoreResult> {
   return { score: computeScore(partial as Item) };
 }
 
+// 通用「只返回 JSON」补全，供解读/摘要等结构化生成复用。
+// 依次尝试各供应商，任一成功即返回解析后的对象；全部失败返回 null。
+export async function completeJson(
+  prompt: string,
+  opts: { system?: string; maxTokens?: number } = {},
+): Promise<{ obj: any; provider: string; usage?: TokenUsage } | null> {
+  const providers = enabledProviders();
+  if (providers.length === 0) return null;
+  const system = opts.system ?? "你只输出 JSON，不解释。";
+  const maxTokens = opts.maxTokens ?? 700;
+  for (const p of providers) {
+    try {
+      const res =
+        p.kind === "anthropic"
+          ? await callAnthropicJson(process.env.ANTHROPIC_API_KEY as string, prompt, system, maxTokens)
+          : await callOaicJson(p, process.env[p.apiKeyEnv] as string, prompt, system, maxTokens);
+      if (res && res.obj && typeof res.obj === "object") return res;
+    } catch {
+      /* 试下一个供应商 */
+    }
+  }
+  return null;
+}
+
+async function callAnthropicJson(
+  key: string,
+  prompt: string,
+  system: string,
+  maxTokens: number,
+): Promise<{ obj: any; provider: string; usage?: TokenUsage } | null> {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-latest",
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: prompt }],
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const txt = d?.content?.[0]?.text;
+  const u = d?.usage;
+  const usage: TokenUsage | undefined = u
+    ? {
+        provider: "anthropic",
+        promptTokens: Number(u.input_tokens) || 0,
+        completionTokens: Number(u.output_tokens) || 0,
+        totalTokens: (Number(u.input_tokens) || 0) + (Number(u.output_tokens) || 0),
+      }
+    : undefined;
+  const obj = txt ? parseJson(txt) : null;
+  return obj ? { obj, provider: ANTHROPIC_LABEL, usage } : null;
+}
+
+async function callOaicJson(
+  p: OaiProvider,
+  key: string,
+  prompt: string,
+  system: string,
+  maxTokens: number,
+): Promise<{ obj: any; provider: string; usage?: TokenUsage } | null> {
+  const r = await fetch(`${p.baseURL}/chat/completions`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: process.env[p.modelEnv] || p.defaultModel,
+      max_tokens: maxTokens,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const txt = d?.choices?.[0]?.message?.content;
+  const u = d?.usage;
+  const usage: TokenUsage | undefined = u
+    ? {
+        provider: p.id,
+        promptTokens: Number(u.prompt_tokens) || 0,
+        completionTokens: Number(u.completion_tokens) || 0,
+        totalTokens: Number(u.total_tokens) || 0,
+      }
+    : undefined;
+  const obj = txt ? parseJson(txt) : null;
+  return obj ? { obj, provider: p.label, usage } : null;
+}
+
+function parseJson(raw: string): any | null {
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[0]);
+  } catch {
+    return null;
+  }
+}
+
 function extractJson(raw: string): ScoreResult | null {
   const m = raw.match(/\{[\s\S]*\}/);
   if (!m) return null;

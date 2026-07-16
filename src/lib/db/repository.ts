@@ -13,6 +13,7 @@ import type {
   ItemsResponse,
   SearchResponse,
   TagInfo,
+  Interpretation,
 } from "../types";
 import { CATEGORIES } from "./seed";
 import { prisma } from "./prisma";
@@ -45,6 +46,7 @@ function rowToItem(r: any): Item {
     projectFields: r.projectFields ?? undefined,
     newsFields: r.newsFields ?? undefined,
     videoFields: r.videoFields ?? undefined,
+    interpretation: r.interpretation ?? undefined,
     attribution:
       r.attribution && typeof r.attribution === "object"
         ? r.attribution
@@ -92,6 +94,7 @@ function toCommon(r: Item): Prisma.ItemUpdateInput {
   c.projectFields = r.projectFields ? r.projectFields : Prisma.JsonNull;
   c.newsFields = r.newsFields ? r.newsFields : Prisma.JsonNull;
   c.videoFields = r.videoFields ? r.videoFields : Prisma.JsonNull;
+  c.interpretation = r.interpretation ? r.interpretation : Prisma.JsonNull;
   return c as Prisma.ItemUpdateInput;
 }
 
@@ -139,6 +142,7 @@ export interface ItemsQuery {
   q?: string;
   tag?: string;
   category?: string;
+  hasInterpretation?: boolean; // 筛选是否已有解读
 }
 
 export async function getItems(q: ItemsQuery = {}): Promise<ItemsResponse> {
@@ -151,6 +155,8 @@ export async function getItems(q: ItemsQuery = {}): Promise<ItemsResponse> {
   if (q.type) list = list.filter((i) => i.type === q.type);
   if (q.category) list = list.filter((i) => i.category === q.category);
   if (q.tag) list = list.filter((i) => i.tags.includes(q.tag!));
+  if (typeof q.hasInterpretation === "boolean")
+    list = list.filter((i) => (q.hasInterpretation ? !!i.interpretation : !i.interpretation));
   if (q.since) {
     const since = new Date(q.since).getTime();
     list = list.filter((i) => new Date(i.publishedAt).getTime() >= since);

@@ -6,6 +6,21 @@ import { JsonLd } from "@/components/JsonLd";
 import { SITE } from "@/lib/config";
 import { formatCount, formatDateTime, hostnameOf, typeLabel } from "@/lib/utils";
 
+// 解读结构化字段 → 中文标签（按 kind 区分）
+const INTERP_LABELS: Record<string, string> = {
+  problem: "要解决的问题",
+  method: "核心方法",
+  contribution: "主要贡献",
+  experiments: "关键实验",
+  significance: "意义与局限",
+  whoFor: "适合谁读",
+  what: "项目简介",
+  highlights: "核心亮点",
+  techStack: "技术栈",
+  useCases: "适用场景",
+  whyAi: "与 AI 的关系",
+};
+
 export const revalidate = 300;
 export const dynamic = "force-dynamic";
 
@@ -65,6 +80,38 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           <div className="rec">
             <span className="lab">推荐理由</span>
             {item.recommendation}
+          </div>
+        )}
+
+        {item.interpretation && (
+          <div className="interpret">
+            <span className="lab">
+              AI 解读
+              <span className="kind">{item.interpretation.kind === "paper" ? "论文" : "代码"}</span>
+            </span>
+            {item.interpretation.summary && (
+              <p className="interpret-summary">{item.interpretation.summary}</p>
+            )}
+            <dl className="interpret-fields">
+              {Object.entries(item.interpretation.fields).map(([k, v]) => (
+                <div className="if-row" key={k}>
+                  <dt>{INTERP_LABELS[k] ?? k}</dt>
+                  <dd>
+                    {Array.isArray(v) ? (
+                      <span className="if-list">
+                        {v.map((x, i) => (
+                          <span className="if-item" key={i}>
+                            {x}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      v
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         )}
 

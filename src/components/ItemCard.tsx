@@ -21,6 +21,9 @@ export default function ItemCard({ item, compact = false }: { item: Item; compac
       <div className="top">
         <span className={cn("badge", TYPE_BADGE[item.type])}>{typeLabel(item.type)}</span>
         <span className="badge badge-score">精选 {item.score}</span>
+        {item.interpretation && (
+          <span className="badge badge-interp">已解读</span>
+        )}
         {item.sources.length > 1 && (
           <span className="badge badge-src">{item.sources.length} 信源</span>
         )}
@@ -50,6 +53,13 @@ export default function ItemCard({ item, compact = false }: { item: Item; compac
         <div className="rec">
           <span className="lab">推荐理由</span>
           {item.recommendation}
+        </div>
+      )}
+
+      {item.interpretation && !compact && (
+        <div className="rec interpret-rec">
+          <span className="lab">AI 解读</span>
+          {item.interpretation.summary}
         </div>
       )}
 
