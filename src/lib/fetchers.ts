@@ -30,12 +30,12 @@ function decode(s: string): string {
 
 const UA = "hackcv-ingest/1.0 (+https://ai.hackcv.com)";
 
-async function getText(url: string, headers: Record<string, string> = {}): Promise<string> {
+async function getText(url: string, headers: Record<string, string> = {}, timeout = 20000): Promise<string> {
   let r: Response;
   try {
     r = await fetch(url, {
       headers: { "user-agent": UA, ...headers },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(timeout),
     });
   } catch (e) {
     throw new Error(`fetch failed: ${e instanceof Error ? e.message : e} <- ${url}`);
@@ -205,7 +205,25 @@ async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
     headers.authorization =
       "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
   }
-  return parseRssXml(await getText(url, headers), src);
+  // RSSHub 首次为某账号抓取需实时打上游（Twitter / 微博），耗时可能远超常规超时；
+  // 故给 45s 宽限，并在 503 / 超时等瞬时故障时重试一次（间隔 2s，给上游冷启动留时间）。
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const xml = await getText(url, headers, 45000);
+      return parseRssXml(xml, src);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      if (attempt === 0 && /timeout|HTTP 50[234]/.test(msg)) {
+        console.warn(`[ingest] RSSHub 重试 src=${src.id} (${(msg || "").slice(0, 90)})`);
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 // 微博 via 自建 RSSHub
