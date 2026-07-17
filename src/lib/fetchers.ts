@@ -1,8 +1,4 @@
 import type { Item, ItemType, Source } from "./types";
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileP = promisify(execFile);
 
 // 抓取得到的原始条目（尚未打分/入库）
 export interface RawItem extends Partial<Item> {
@@ -39,7 +35,7 @@ async function getText(url: string, headers: Record<string, string> = {}): Promi
   try {
     r = await fetch(url, {
       headers: { "user-agent": UA, ...headers },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(20000),
     });
   } catch (e) {
     throw new Error(`fetch failed: ${e instanceof Error ? e.message : e} <- ${url}`);
@@ -188,23 +184,38 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
   return parseRssXml(await getText(src.url), src);
 }
 
-// Twitter/X via xcancel（Nitter 实例）。xcancel 按 TLS 指纹拦截 node fetch
-// （返回 "RSS reader not yet whitelisted"），但放行 curl —— 故用 curl 子进程抓取，
-// UA 仍伪装 Inoreader（实测 Inoreader/FreshRSS/Tiny Tiny RSS UA 可用）。
-export async function fetchTwitter(src: Source): Promise<RawItem[]> {
-  const { stdout } = await execFileP("curl", [
-    "-s",
-    "--max-time",
-    "15",
-    "--compressed",
-    "-A",
-    "Inoreader/1.0 (+https://inoreader.com)",
-    src.url,
-  ]);
-  if (!stdout || stdout.includes("RSS reader not yet whitelisted")) {
-    throw new Error("xcancel rejected (not whitelisted)");
+// 微博 / X(Twitter) 统一走自建 RSSHub（本地实例）：
+//   - 微博路由 /weibo/user/{uid}（需数字 UID + 微博 Cookie，CookieCloud 已同步 weibo.com）
+//   - X 路由   /twitter/user/{handle}（实例已配 guest token，无需登录 Cookie）
+// 入口与 Basic Auth 凭据从环境变量读取，绝不硬编码进代码/仓库：
+//   RSSHUB_BASE_URL  例如 https://hackcv.com/api/rsshub
+//   RSSHUB_USER / RSSHUB_PASS  Basic Auth 账号密码
+// src.url 存相对路径（如 "weibo/user/1727858283"、"twitter/user/karpathy"），
+// 此处拼接 base 并追加 limit。
+async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
+  const base = process.env.RSSHUB_BASE_URL;
+  if (!base) throw new Error("RSSHUB_BASE_URL 未配置，无法抓取 RSSHub 源");
+  const path = src.url.replace(/^\/+/, "");
+  const sep = path.includes("?") ? "&" : "?";
+  const url = `${base.replace(/\/+$/, "")}/${path}${sep}limit=15`;
+  const headers: Record<string, string> = {};
+  const user = process.env.RSSHUB_USER;
+  const pass = process.env.RSSHUB_PASS;
+  if (user && pass) {
+    headers.authorization =
+      "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
   }
-  return parseRssXml(stdout, src);
+  return parseRssXml(await getText(url, headers), src);
+}
+
+// 微博 via 自建 RSSHub
+export async function fetchWeibo(src: Source): Promise<RawItem[]> {
+  return fetchRssHubFeed(src);
+}
+
+// X(Twitter) via 自建 RSSHub（替换原 xcancel 方案：xcancel 公共实例不稳定且按 TLS 指纹封 node fetch）
+export async function fetchTwitter(src: Source): Promise<RawItem[]> {
+  return fetchRssHubFeed(src);
 }
 
 function fmtDuration(sec: number): string {

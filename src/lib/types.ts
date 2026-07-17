@@ -3,7 +3,7 @@
 
 export type ItemType = "paper" | "project" | "news" | "video";
 
-export type SourceType = "rss" | "api" | "scraper" | "manual" | "youtube" | "twitter";
+export type SourceType = "rss" | "api" | "scraper" | "manual" | "youtube" | "twitter" | "weibo";
 
 export interface PaperFields {
   arxivId: string;

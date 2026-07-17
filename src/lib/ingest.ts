@@ -9,7 +9,7 @@ import {
 } from "./db/repository";
 import { scoreItem } from "./llm";
 import { interpretItem } from "./interpret";
-import { FETCHERS, fetchYoutube, fetchTwitter } from "./fetchers";
+import { FETCHERS, fetchYoutube, fetchTwitter, fetchWeibo } from "./fetchers";
 import type { Item } from "./types";
 
 export interface IngestSourceStat {
@@ -91,7 +91,14 @@ export async function runIngestion(opts?: {
       }
     }
 
-    const fetcher = src.type === "youtube" ? fetchYoutube : src.type === "twitter" ? fetchTwitter : FETCHERS[src.id];
+    const fetcher =
+      src.type === "youtube"
+        ? fetchYoutube
+        : src.type === "twitter"
+          ? fetchTwitter
+          : src.type === "weibo"
+            ? fetchWeibo
+            : FETCHERS[src.id];
     if (!fetcher) continue;
     try {
       const raws = await fetcher(src);
