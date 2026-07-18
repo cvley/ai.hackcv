@@ -1,4 +1,8 @@
+import { execFile } from "child_process";
+import { promisify } from "util";
 import type { Item, ItemType, Source } from "./types";
+
+const execFileP = promisify(execFile);
 
 // 抓取得到的原始条目（尚未打分/入库）
 export interface RawItem extends Partial<Item> {
@@ -188,7 +192,7 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
 //   - 微博路由 /weibo/user/{uid}（需数字 UID + 微博 Cookie，CookieCloud 已同步 weibo.com）
 //   - X 路由   /twitter/user/{handle}（实例已配 guest token，无需登录 Cookie）
 // 入口与 Basic Auth 凭据从环境变量读取，绝不硬编码进代码/仓库：
-//   RSSHUB_BASE_URL  例如 https://hackcv.com/api/rsshub
+//   RSSHUB_BASE_URL  例如 https://rsshub.hackcv.com
 //   RSSHUB_USER / RSSHUB_PASS  Basic Auth 账号密码
 // src.url 存相对路径（如 "weibo/user/1727858283"、"twitter/user/karpathy"），
 // 此处拼接 base 并追加 limit。
@@ -231,9 +235,52 @@ export async function fetchWeibo(src: Source): Promise<RawItem[]> {
   return fetchRssHubFeed(src);
 }
 
-// X(Twitter) via 自建 RSSHub（替换原 xcancel 方案：xcancel 公共实例不稳定且按 TLS 指纹封 node fetch）
+// X(Twitter) 兜底：RSSHub 不可用时回退到 xcancel 公共实例。
+// 注意：xcancel 按 TLS 指纹封锁 node 原生 fetch，故用系统 curl 拉取（与原实现一致）。
+// 仅返回 1 条左右（公共实例已降级），但足以避免整源为空。
+async function fetchXcancel(src: Source): Promise<RawItem[]> {
+  const handle = (src.url.split("/").pop() || "").replace(/^@/, "");
+  if (!handle) throw new Error(`xcancel 兜底：无法从 url 解析 handle (${src.url})`);
+  const url = `https://rss.xcancel.com/${handle}/rss`;
+  let stdout: string;
+  try {
+    const r = await execFileP("curl", [
+      "-sSL",
+      "--max-time",
+      "25",
+      // xcancel 拒收完整 Chrome UA（返回 400 "This URL only works inside an RSS client"），
+      // 用简短 Mozilla UA 才能拿到 RSS。
+      "-A",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      url,
+    ], { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 });
+    stdout = r.stdout;
+  } catch (e) {
+    throw new Error(`xcancel 兜底拉取失败 src=${src.id}: ${e instanceof Error ? e.message : e}`);
+  }
+  if (!stdout || !/<item>|<entry>/.test(stdout)) {
+    throw new Error(`xcancel 兜底返回空/非 RSS src=${src.id} <- ${url}`);
+  }
+  // xcancel 对未 whitelist 的账号只返回占位条目（title="RSS reader not yet whitelisted!"），
+  // 这种占位无真实内容，必须过滤掉，避免污染库。
+  const items = parseRssXml(stdout, src).filter(
+    (it) => (it.title || "").trim() !== "RSS reader not yet whitelisted!",
+  );
+  if (items.length === 0) {
+    console.warn(`[ingest] xcancel 兜底 src=${src.id} 仅返回占位内容（账号未 whitelist），视为空`);
+  }
+  return items;
+}
+
+// X(Twitter)：优先走自建 RSSHub；RSSHub 失败（503/超时等）时回退 xcancel 公共实例。
 export async function fetchTwitter(src: Source): Promise<RawItem[]> {
-  return fetchRssHubFeed(src);
+  try {
+    return await fetchRssHubFeed(src);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[ingest] RSSHub 失败 src=${src.id}，回退 xcancel: ${(msg || "").slice(0, 90)}`);
+    return await fetchXcancel(src);
+  }
 }
 
 function fmtDuration(sec: number): string {
