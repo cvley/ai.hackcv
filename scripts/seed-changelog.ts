@@ -4,6 +4,16 @@ import { prisma } from "../src/lib/db/prisma";
 
 const SEED: { version: string; title: string; items: string[] }[] = [
   {
+    version: "2026-07-18",
+    title: "hackcv CLI 正式发布（npm 开放安装）",
+    items: [
+      "hackcv CLI 发布至 npm：一行 `npx hackcv-cli@latest hot` 即可获取今日热门推荐",
+      "支持 hot / recommend 两类命令，可按类型（论文 / 开源项目 / 资讯）、时间窗口、标签筛选，并支持 --json 管道输出",
+      "配套文档页 /cli 与 AI Agent 技能页 /skill 同步上线，开发者中心 /developers 统一入口收纳",
+      "npm 发布接入 GitHub Actions：打 v* tag 自动构建并发布，全程经自有服务器代理稳定出网",
+    ],
+  },
+  {
     version: "2026-07-13",
     title: "开发者中心与热门推荐 CLI / Skill 上线",
     items: [
