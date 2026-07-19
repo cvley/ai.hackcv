@@ -15,6 +15,12 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
+# cron 环境较干净：若未传入 CRON_SECRET，则从站点 .env 读取（仅脚本敲门需要它）
+HACKCV_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -z "${CRON_SECRET:-}" ] && [ -f "$HACKCV_DIR/.env" ]; then
+  set -a; . "$HACKCV_DIR/.env"; set +a
+fi
+
 ENDPOINT="${HACKCV_ENDPOINT:-https://ai.hackcv.com}/api/cron/feedback-notify"
 SECRET="${CRON_SECRET:?请在环境变量中设置 CRON_SECRET（需与站点部署环境一致）}"
 LOCK="/tmp/hackcv-cron-feedback.lock"
