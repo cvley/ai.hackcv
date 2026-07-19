@@ -365,6 +365,30 @@ export async function getItemsByCategory(category: string, take = 50): Promise<I
   return (await allItems()).filter((i) => i.category === category).sort(byNewest).slice(0, take);
 }
 
+// ============ 内部社媒（X / 微博）读取：分析专用 ============
+// 仅返回 weibo / twitter 内部信源（按 Item.source 名称集合筛选，不过滤掉内部数据）。
+// 支持按平台、按近 N 天、限量；供 /api/internal/social 做热点分析与选题。
+export async function getInternalSocialItems(opts: {
+  sourceType?: "weibo" | "twitter";
+  days?: number;
+  take?: number;
+} = {}): Promise<Item[]> {
+  const names =
+    opts.sourceType === "weibo" || opts.sourceType === "twitter"
+      ? SOURCES.filter((s) => s.type === opts.sourceType).map((s) => s.name)
+      : Array.from(INTERNAL_SOURCE_NAMES);
+  const where: any = { source: { in: names } };
+  if (opts.days && opts.days > 0) {
+    where.publishedAt = { gte: new Date(Date.now() - opts.days * 86_400_000) };
+  }
+  const rows = await prisma.item.findMany({
+    where,
+    orderBy: { publishedAt: "desc" },
+    take: Math.min(Math.max(opts.take ?? 500, 1), 1000),
+  });
+  return rows.map(rowToItem);
+}
+
 // ============ 信源 / 设置 ============
 
 export async function getSources(): Promise<Source[]> {
