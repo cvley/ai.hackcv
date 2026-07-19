@@ -28,6 +28,19 @@ const STOPWORDS = new Set([
   "啊", "吧", "呢", "吗", "哦", "嗯", "哈哈", "自己",
 ]);
 
+// 英文停用词 / 链接碎片 / 极泛词（从正文里剥掉，避免 the/and/https 霸榜）。
+// 保留 agent / gpt / kimi / openai 等有意义品牌或技术词。
+const EN_STOP = new Set([
+  "the", "and", "for", "this", "with", "that", "you", "your", "are", "was", "were",
+  "has", "have", "had", "will", "can", "not", "but", "our", "all", "who", "what",
+  "when", "how", "why", "into", "about", "they", "their", "his", "her", "its",
+  "one", "two", "new", "get", "use", "using", "used", "like", "just", "also",
+  "more", "than", "then", "now", "out", "up", "is", "be", "to", "of", "on", "in",
+  "at", "as", "by", "an", "or", "it", "he", "she", "we", "me", "my", "from",
+  "rt", "via", "amp", "com", "www", "http", "https", "co", "io", "ai", "ll", "im",
+  "dont", "cant", "wont", "youre", "thats", "heres", "ive", "id", "ok", "yes", "no",
+]);
+
 interface TermRecord {
   term: string;
   count: number;
@@ -60,7 +73,10 @@ const MAX_SAMPLE = 5;
 const sourceMeta = new Map(SOURCES.map((s) => [s.name, s]));
 
 function stripTags(s: string): string {
-  return s.replace(/<[^>]+>/g, " ");
+  return s
+    .replace(/<[^>]+>/g, " ") // 去 HTML 标签
+    .replace(/https?:\/\/\S+/g, " ") // 去 http(s):// 链接（避免 https 等噪音词）
+    .replace(/www\.\S+/g, " ");
 }
 
 function extractHashtags(text: string): string[] {
@@ -113,7 +129,9 @@ export function analyzeSocial(
     const tags = extractHashtags(text);
     const mentions = extractMentions(text);
     const runs = cjkRuns(text);
-    const asciiWords = (text.match(/[A-Za-z][A-Za-z0-9+#.\-]{2,}/g) || []).map((w) => w.toLowerCase());
+    const asciiWords = (text.match(/[A-Za-z][A-Za-z0-9+#.\-]{2,}/g) || [])
+      .map((w) => w.toLowerCase())
+      .filter((w) => !EN_STOP.has(w));
 
     const candidates = new Set<string>();
     for (const t of tags) candidates.add(t);
