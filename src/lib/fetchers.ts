@@ -184,7 +184,76 @@ async function fetchArxivRssFallback(): Promise<RawItem[]> {
   return items;
 }
 
-async function fetchArxiv(src: Source): Promise<RawItem[]> {
+// arXiv via 自建 RSSHub（papers 命名空间）：
+//   路由 /papers/category/arxiv/:cat （本实例把 arxiv 放在 papers 命名空间下，
+//   并非官方文档里的 /arxiv/category/:cat；已实测确认正确路径）。
+// 输出 <item>：<title>论文标题、<link>papers.cool/arxiv/<id>、<author>逗号分隔作者、
+//   <pubDate>公告日期、<description>双重转义 HTML（[Kimi]链接 + Authors 段 + 摘要<p>）。
+// 注意：该路由经 papers.cool 中转，每分类仅返回约 1 篇（上游 cap），覆盖率有限；
+//       故作为主源优先尝试，覆盖率不足时由官方 API(+RSS) 兜底补充（见 fetchArxiv）。
+function extractArxivAbstract(html: string): string {
+  let s = html.replace(/<a[^>]*>\[Kimi\]<\/a>/gi, "");
+  s = s.replace(/<p>[\s\S]*?Authors:[\s\S]*?<\/p>/i, "");
+  const ps = (s.match(/<p>([\s\S]*?)<\/p>/g) || [])
+    .map((p) => p.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const abstract = ps.pop() || s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return abstract.slice(0, 800);
+}
+
+async function parseArxivRssHubItem(block: string, cat: string): Promise<RawItem | null> {
+  const title = decode(tag(block, "title"));
+  const link = tag(block, "link");
+  const guid = tag(block, "guid");
+  const m = link.match(/papers\.cool\/arxiv\/([^?]+)/) || guid.match(/papers\.cool-([^<]+)/);
+  const arxivId = m ? m[1].replace(/v\d+$/, "") : undefined;
+  if (!title || !arxivId) return null;
+  // description 为双重转义 HTML：先 decode 一次还原成真实 HTML，再抽摘要
+  const descHtml = decode(tag(block, "description") || "");
+  const abstract = extractArxivAbstract(descHtml);
+  const authorStr = decode(tag(block, "author") || "");
+  const authors = authorStr.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 3);
+  const pubRaw = tag(block, "pubDate");
+  return {
+    url: `https://arxiv.org/abs/${arxivId}`,
+    type: "paper",
+    source: "arXiv",
+    category: arxivCategoryToSlug(cat),
+    title,
+    summary: abstract,
+    publishedAt: safeIso(pubRaw),
+    paperFields: {
+      arxivId,
+      authors,
+      domains: [cat],
+      pdfUrl: `https://arxiv.org/pdf/${arxivId}`,
+    },
+    tags: [cat.replace("cs.", "cs.")],
+  } as unknown as RawItem;
+}
+
+async function fetchArxivRssHub(): Promise<RawItem[]> {
+  const items: RawItem[] = [];
+  for (const cat of ARXIV_CATS) {
+    try {
+      const xml = await fetchRssHubRaw(`papers/category/arxiv/${cat}`);
+      const blocks = xml.split("<item>").slice(1);
+      for (const b of blocks) {
+        const it = await parseArxivRssHubItem(b.split("</item>")[0], cat);
+        if (it) items.push(it);
+      }
+    } catch (e) {
+      console.warn(
+        `[arxiv] RSSHub ${cat} 失败: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  }
+  return items;
+}
+
+// 官方来源（原有逻辑，作为兜底 / 补充）：API 查询 4 分类最新 24 篇，
+// 429 / 失败时回退 export.arxiv.org 的 RSS。
+async function fetchArxivOfficial(src: Source): Promise<RawItem[]> {
   const url =
     "https://export.arxiv.org/api/query?search_query=" +
     encodeURIComponent("cat:cs.AI OR cat:cs.CL OR cat:cs.LG OR cat:cs.CV") +
@@ -195,10 +264,45 @@ async function fetchArxiv(src: Source): Promise<RawItem[]> {
     return entries.map((e) => parseArxivApiBlock(e.split("</entry>")[0]));
   } catch (e) {
     console.warn(
-      `[arxiv] API 抓取失败，回退 RSS 兜底: ${e instanceof Error ? e.message : e}`,
+      `[arxiv] 官方 API 抓取失败，回退 RSS 兜底: ${e instanceof Error ? e.message : e}`,
     );
     return await fetchArxivRssFallback();
   }
+}
+
+// arXiv 抓取入口：主源 = 自建 RSSHub（papers 命名空间），优先尝试、命中即用；
+// 因 RSSHub 经 papers.cool 中转且每分类仅 ~1 篇，覆盖率远低于官方，
+// 故当其为空或偏少时，用官方 API(+RSS) 补充，按 URL 去重合并，保证日报不退化。
+async function fetchArxiv(src: Source): Promise<RawItem[]> {
+  let items: RawItem[] = [];
+  try {
+    items = await fetchArxivRssHub();
+    console.log(`[arxiv] RSSHub 主源返回 ${items.length} 篇`);
+  } catch (e) {
+    console.warn(
+      `[arxiv] RSSHub 主源整体失败，转官方: ${e instanceof Error ? e.message : e}`,
+    );
+  }
+  const ARXIV_MIN = 8;
+  if (items.length === 0) {
+    items = await fetchArxivOfficial(src);
+  } else if (items.length < ARXIV_MIN) {
+    try {
+      const fb = await fetchArxivOfficial(src);
+      const seen = new Set(items.map((i) => i.url));
+      for (const it of fb) {
+        if (!seen.has(it.url)) {
+          items.push(it);
+          seen.add(it.url);
+        }
+      }
+    } catch (e) {
+      console.warn(
+        `[arxiv] 官方补充失败，仅用 RSSHub 的 ${items.length} 篇: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  }
+  return items;
 }
 
 async function fetchGithub(src: Source): Promise<RawItem[]> {
@@ -277,20 +381,20 @@ async function fetchRss(src: Source): Promise<RawItem[]> {
   return parseRssXml(await getText(src.url), src);
 }
 
-// 微博 / X(Twitter) 统一走自建 RSSHub（本地实例）：
-//   - 微博路由 /weibo/user/{uid}（需数字 UID + 微博 Cookie，CookieCloud 已同步 weibo.com）
-//   - X 路由   /twitter/user/{handle}（实例已配 guest token，无需登录 Cookie）
-// 入口与 Basic Auth 凭据从环境变量读取，绝不硬编码进代码/仓库：
+// 微博 / X(Twitter) / arXiv 统一走自建 RSSHub（本地实例），入口与 Basic Auth 凭据
+// 从环境变量读取，绝不硬编码进代码/仓库：
 //   RSSHUB_BASE_URL  例如 https://rsshub.hackcv.com
 //   RSSHUB_USER / RSSHUB_PASS  Basic Auth 账号密码
-// src.url 存相对路径（如 "weibo/user/1727858283"、"twitter/user/karpathy"），
-// 此处拼接 base 并追加 limit。
-async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
+// src.url / path 存相对路径（如 "weibo/user/1727858283"、"twitter/user/karpathy"、
+// "papers/category/arxiv/cs.AI"），此处拼接 base 并追加 limit。
+// 通用传输层：负责拼 URL、Basic Auth、45s 宽限、瞬时故障重试一次，并识别
+// RSSHub 路由失效时返回的 200 HTML 错误页（非 RSS）以便上层触发兜底。
+async function fetchRssHubRaw(path: string): Promise<string> {
   const base = process.env.RSSHUB_BASE_URL;
   if (!base) throw new Error("RSSHUB_BASE_URL 未配置，无法抓取 RSSHub 源");
-  const path = src.url.replace(/^\/+/, "");
-  const sep = path.includes("?") ? "&" : "?";
-  const url = `${base.replace(/\/+$/, "")}/${path}${sep}limit=15`;
+  const p = path.replace(/^\/+/, "");
+  const sep = p.includes("?") ? "&" : "?";
+  const url = `${base.replace(/\/+$/, "")}/${p}${sep}limit=20`;
   const headers: Record<string, string> = {};
   const user = process.env.RSSHUB_USER;
   const pass = process.env.RSSHUB_PASS;
@@ -304,12 +408,17 @@ async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const xml = await getText(url, headers, 45000);
-      return parseRssXml(xml, src);
+      // RSSHub 路由失效 / 实例异常时往往返回 200 的 HTML 错误页而非 RSS，
+      // 必须识别出来抛错，才能触发上层兜底（否则会被当成「成功抓到 0 条」）。
+      if (!/<item>|<entry>|<rss|channel/i.test(xml)) {
+        throw new Error("RSSHub 返回非 RSS（路由可能失效 / 实例异常）");
+      }
+      return xml;
     } catch (e) {
       lastErr = e;
       const msg = e instanceof Error ? e.message : String(e);
       if (attempt === 0 && /timeout|HTTP 50[234]/.test(msg)) {
-        console.warn(`[ingest] RSSHub 重试 src=${src.id} (${(msg || "").slice(0, 90)})`);
+        console.warn(`[ingest] RSSHub 重试 ${path} (${(msg || "").slice(0, 90)})`);
         await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
@@ -317,6 +426,10 @@ async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
     }
   }
   throw lastErr;
+}
+
+async function fetchRssHubFeed(src: Source): Promise<RawItem[]> {
+  return parseRssXml(await fetchRssHubRaw(src.url), src);
 }
 
 // 微博 via 自建 RSSHub
