@@ -16,6 +16,7 @@ import type {
   Interpretation,
 } from "../types";
 import { CATEGORIES } from "./seed";
+import { SOURCES } from "../sources";
 import { prisma } from "./prisma";
 import { hotness } from "../scoring";
 import { computeScore } from "../scoring";
@@ -153,11 +154,17 @@ async function upsertItem(r: Item): Promise<Item> {
 
 // ============ 读取：通用 ============
 
-// 内部信源：仅入库用于分析、不外放（微博 wb- / X tw-）。
-// 以 id 前缀统一判定，集中在此一处；未来要恢复外放只需改这里。
-const INTERNAL_SOURCE_PREFIXES = ["wb-", "tw-"];
-export function isInternalSource(id: string): boolean {
-  return INTERNAL_SOURCE_PREFIXES.some((p) => id.startsWith(p));
+// 内部信源：仅入库用于分析、不外放（微博 weibo / X twitter）。
+// 注意：Item.source 字段存的是「信源名称」而非 id（如 "Allie K. Miller"），
+// 故以信源定义中的 id/名称集合统一判定，集中在此一处；未来要恢复外放只需改这里。
+const INTERNAL_SOURCE_IDS = new Set(
+  SOURCES.filter((s) => s.type === "weibo" || s.type === "twitter").map((s) => s.id),
+);
+const INTERNAL_SOURCE_NAMES = new Set(
+  SOURCES.filter((s) => s.type === "weibo" || s.type === "twitter").map((s) => s.name),
+);
+export function isInternalSource(idOrName: string): boolean {
+  return INTERNAL_SOURCE_IDS.has(idOrName) || INTERNAL_SOURCE_NAMES.has(idOrName);
 }
 
 // includeInternal=false（默认）时过滤掉内部信源条目，使其不出现在任何公开出口。
@@ -539,7 +546,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     prisma.item.count(),
     prisma.item.count({ where: { selected: true } }),
     prisma.item.count({
-      where: { OR: [{ source: { startsWith: "wb-" } }, { source: { startsWith: "tw-" } }] },
+      where: { source: { in: Array.from(INTERNAL_SOURCE_NAMES) } },
     }),
     prisma.item.count({ where: { type: "paper" } }),
     prisma.item.count({ where: { type: "project" } }),
