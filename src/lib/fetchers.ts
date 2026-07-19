@@ -73,43 +73,132 @@ function arxivCategoryToSlug(primary: string): string {
   }
 }
 
+const ARXIV_CATS = ["cs.AI", "cs.CL", "cs.LG", "cs.CV"];
+
+// 带 429 退避重试的抓取：arXiv API 对出口 IP 偶发限流（实测第一次重试即 200），
+// 原 fetchArxiv 无重试会直接抛错导致 arxiv 信源长期沉默。仅对限流退避重试，其它错误直接抛出。
+async function getTextWithRetry(
+  url: string,
+  headers: Record<string, string> = {},
+  retries = 3,
+  baseDelay = 5000,
+): Promise<string> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await getText(url, headers);
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/HTTP 429|Too Many Requests/.test(msg) && attempt < retries) {
+        const wait = baseDelay * Math.pow(2, attempt);
+        console.warn(`[arxiv] 限流 429，第 ${attempt + 1} 次重试，等待 ${wait}ms <- ${url}`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+function safeIso(s?: string): string | undefined {
+  if (!s) return undefined;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? undefined : new Date(s).toISOString();
+}
+
+function parseArxivApiBlock(block: string): RawItem {
+  const rawTitle = decode(tag(block, "title"));
+  const summary = decode(tag(block, "summary"));
+  const idUrl = tag(block, "id") || attr(block, "link", "href");
+  const published = tag(block, "published") || tag(block, "updated");
+  const primary =
+    attr(block, "arxiv:primary_category", "term") ||
+    tag(block, "category").match(/term="([^"]+)"/)?.[1] ||
+    "cs.LG";
+  const authors = (block.match(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>/g) || [])
+    .map((a) => decode(a.replace(/<[^>]+>/g, " ")))
+    .slice(0, 3);
+  const arxivId = (idUrl.match(/abs\/(.+)$/) || [])[1];
+  return {
+    url: idUrl,
+    type: "paper",
+    source: "arXiv",
+    category: arxivCategoryToSlug(primary),
+    title: rawTitle,
+    summary,
+    publishedAt: safeIso(published),
+    paperFields: {
+      arxivId,
+      authors,
+      domains: [primary],
+      pdfUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}` : undefined,
+    },
+    tags: [primary.replace("cs.", "cs.")],
+  } as unknown as RawItem;
+}
+
+// RSS 兜底：API 持续 429 时改抓 4 个分类 RSS（走 export.arxiv.org/rss/*，不同限流域），合并解析。
+// 注意周末 arXiv 的 skipDays 会让部分分类 RSS 为空 channel，逐个 try 容错即可。
+async function fetchArxivRssFallback(): Promise<RawItem[]> {
+  const items: RawItem[] = [];
+  for (const cat of ARXIV_CATS) {
+    const url = `https://export.arxiv.org/rss/${cat}`;
+    try {
+      const xml = await getTextWithRetry(url, {}, 2, 4000);
+      const blocks = xml.split("<item>").slice(1).slice(0, 15);
+      for (const b of blocks) {
+        const block = b.split("</item>")[0];
+        const link = tag(block, "link") || tag(block, "guid");
+        const title = decode(tag(block, "title"));
+        if (!title || !link) continue;
+        const m = link.match(/abs\/(.+)$/) || link.match(/arxiv\.org\/(?:abs|pdf)\/(.+?)(?:v\d+)?$/);
+        const arxivId = m ? m[1] : undefined;
+        const primary = tag(block, "category") || cat;
+        const desc = decode(tag(block, "description") || "");
+        const abstract = desc.includes("Abstract:")
+          ? desc.split("Abstract:")[1].trim()
+          : desc.replace(/^arXiv:[\w.]+(v\d+)?\s*Announce Type:\s*\w+\s*/i, "");
+        items.push({
+          url: link,
+          type: "paper",
+          source: "arXiv",
+          category: arxivCategoryToSlug(primary),
+          title,
+          summary: abstract.slice(0, 600),
+          publishedAt: safeIso(tag(block, "pubDate")),
+          paperFields: {
+            arxivId,
+            authors: [],
+            domains: [primary],
+            pdfUrl: arxivId ? `https://arxiv.org/pdf/${arxivId}` : undefined,
+          },
+          tags: [primary.replace("cs.", "cs.")],
+        } as unknown as RawItem);
+      }
+    } catch (e) {
+      console.warn(`[arxiv] RSS 兜底 ${cat} 失败: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  return items;
+}
+
 async function fetchArxiv(src: Source): Promise<RawItem[]> {
   const url =
     "https://export.arxiv.org/api/query?search_query=" +
     encodeURIComponent("cat:cs.AI OR cat:cs.CL OR cat:cs.LG OR cat:cs.CV") +
     "&sortBy=submittedDate&sortOrder=descending&max_results=24";
-  const xml = await getText(url);
-  const entries = xml.split("<entry>").slice(1);
-  return entries.map((e) => {
-    const block = e.split("</entry>")[0];
-    const rawTitle = decode(tag(block, "title"));
-    const summary = decode(tag(block, "summary"));
-    const idUrl = tag(block, "id") || attr(block, "link", "href");
-    const published = tag(block, "published") || tag(block, "updated");
-    const primary = attr(block, "arxiv:primary_category", "term") || tag(block, "category").match(/term="([^"]+)"/)?.[1] || "cs.LG";
-    const authors = (block.match(/<author>[\s\S]*?<name>([\s\S]*?)<\/name>/g) || [])
-      .map((a) => decode(a.replace(/<[^>]+>/g, " ")))
-      .slice(0, 3);
-    return {
-      url: idUrl,
-      type: "paper" as ItemType,
-      source: "arXiv",
-      category: arxivCategoryToSlug(primary),
-      title: rawTitle,
-      summary,
-      publishedAt: published ? new Date(published).toISOString() : undefined,
-      paperFields: {
-        arxivId: (idUrl.match(/abs\/(.+)$/) || [])[1] || undefined,
-        authors,
-        domains: [primary],
-        pdfUrl:
-          (idUrl.match(/abs\/(.+)$/) || [])[1] || undefined
-            ? `https://arxiv.org/pdf/${(idUrl.match(/abs\/(.+)$/) || [])[1] || ""}`
-            : undefined,
-      },
-      tags: [primary.replace("cs.", "cs.")],
-    };
-  }) as unknown as RawItem[];
+  try {
+    const xml = await getTextWithRetry(url);
+    const entries = xml.split("<entry>").slice(1);
+    return entries.map((e) => parseArxivApiBlock(e.split("</entry>")[0]));
+  } catch (e) {
+    console.warn(
+      `[arxiv] API 抓取失败，回退 RSS 兜底: ${e instanceof Error ? e.message : e}`,
+    );
+    return await fetchArxivRssFallback();
+  }
 }
 
 async function fetchGithub(src: Source): Promise<RawItem[]> {
