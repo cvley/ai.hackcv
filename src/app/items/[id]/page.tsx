@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getItem, getItemsByCategory, getCategories } from "@/lib/db/repository";
+import { getItem, getItemsByCategory, getCategories, isInternalSource } from "@/lib/db/repository";
 import ItemCard from "@/components/ItemCard";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE } from "@/lib/config";
@@ -27,6 +27,8 @@ export const dynamic = "force-dynamic";
 export default async function ItemPage({ params }: { params: { id: string } }) {
   const item = await getItem(params.id);
   if (!item) notFound();
+  // 内部信源（微博 / X）仅入库用于分析，不对外暴露单条详情
+  if (isInternalSource(item.source)) notFound();
 
   const cat = getCategories().find((c) => c.slug === item.category);
   const related = (await getItemsByCategory(item.category))

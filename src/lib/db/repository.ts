@@ -69,25 +69,68 @@ function rowToSource(r: any): Source {
   };
 }
 
+// 清洗会破坏 PostgreSQL/Prisma JSON 序列化的非法字符：
+//  - 孤立的 UTF-16 代理项（emoji 等高代理项被 XML/CDATA 解析截断导致，serde_json 报
+//    "unexpected end of hex escape"）→ 替换为 U+FFFD
+//  - 除 \n \t \r 外的控制字符 → 丢弃
+//  - 以反斜杠结尾的字符串 → 末尾补空格（防御边界情况）
+function sanitizeStr(s: any): string {
+  if (typeof s !== "string") return s == null ? "" : String(s);
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const lo = s.charCodeAt(i + 1);
+      if (lo >= 0xdc00 && lo <= 0xdfff) {
+        out += s.slice(i, i + 2);
+        i++;
+      } else {
+        out += "�";
+      }
+      continue;
+    }
+    if (c >= 0xdc00 && c <= 0xdfff) {
+      out += "�";
+      continue;
+    }
+    if (c < 32 && c !== 9 && c !== 10 && c !== 13) continue;
+    out += s[i];
+  }
+  if (out.endsWith("\\")) out += " ";
+  return out;
+}
+
+// 递归清洗任意结构里的字符串叶子（用于 sources / tags / attribution 等 Json 列）
+function sanitizeDeep(v: any): any {
+  if (typeof v === "string") return sanitizeStr(v);
+  if (Array.isArray(v)) return v.map(sanitizeDeep);
+  if (v && typeof v === "object") {
+    const o: any = {};
+    for (const k of Object.keys(v)) o[k] = sanitizeDeep(v[k]);
+    return o;
+  }
+  return v;
+}
+
 // Item 公共写字段（不含 id / url / createdAt）
 function toCommon(r: Item): Prisma.ItemUpdateInput {
   const c: any = {
     type: r.type,
-    title: r.title,
-    titleZh: r.title_zh ?? null,
-    summary: r.summary,
-    recommendation: r.recommendation ?? null,
-    permalink: r.permalink,
-    source: r.source,
-    sources: r.sources,
+    title: sanitizeStr(r.title),
+    titleZh: r.title_zh ? sanitizeStr(r.title_zh) : null,
+    summary: sanitizeStr(r.summary),
+    recommendation: r.recommendation ? sanitizeStr(r.recommendation) : null,
+    permalink: sanitizeStr(r.permalink),
+    source: sanitizeStr(r.source),
+    sources: sanitizeDeep(r.sources),
     publishedAt: new Date(r.publishedAt),
     collectedAt: new Date(r.collectedAt),
-    category: r.category,
-    tags: r.tags,
+    category: sanitizeStr(r.category),
+    tags: sanitizeDeep(r.tags),
     score: r.score,
     selected: r.selected,
     dailyDate: r.dailyDate ?? null,
-    attribution: r.attribution,
+    attribution: sanitizeDeep(r.attribution),
     updatedAt: new Date(),
   };
   c.paperFields = r.paperFields ? r.paperFields : Prisma.JsonNull;
@@ -110,9 +153,18 @@ async function upsertItem(r: Item): Promise<Item> {
 
 // ============ 读取：通用 ============
 
-async function allItems(): Promise<Item[]> {
+// 内部信源：仅入库用于分析、不外放（微博 wb- / X tw-）。
+// 以 id 前缀统一判定，集中在此一处；未来要恢复外放只需改这里。
+const INTERNAL_SOURCE_PREFIXES = ["wb-", "tw-"];
+export function isInternalSource(id: string): boolean {
+  return INTERNAL_SOURCE_PREFIXES.some((p) => id.startsWith(p));
+}
+
+// includeInternal=false（默认）时过滤掉内部信源条目，使其不出现在任何公开出口。
+async function allItems(includeInternal = false): Promise<Item[]> {
   const rows = await prisma.item.findMany({ orderBy: { publishedAt: "desc" } });
-  return rows.map(rowToItem);
+  const items = rows.map(rowToItem);
+  return includeInternal ? items : items.filter((i) => !isInternalSource(i.source));
 }
 
 // 游标分页：cursor = base64(offset)
@@ -143,6 +195,7 @@ export interface ItemsQuery {
   tag?: string;
   category?: string;
   hasInterpretation?: boolean; // 筛选是否已有解读
+  includeInternal?: boolean; // 后台/分析用：含内部信源（默认不含，不外放）
 }
 
 export async function getItems(q: ItemsQuery = {}): Promise<ItemsResponse> {
@@ -150,7 +203,7 @@ export async function getItems(q: ItemsQuery = {}): Promise<ItemsResponse> {
   const take = Math.min(Math.max(q.take ?? SITE.defaultTake, 1), SITE.maxTake);
   const offset = decodeCursor(q.cursor);
 
-  let list = await allItems();
+  let list = await allItems(q.includeInternal ?? false);
   if (mode === "selected") list = list.filter((i) => i.selected);
   if (q.type) list = list.filter((i) => i.type === q.type);
   if (q.category) list = list.filter((i) => i.category === q.category);
@@ -470,6 +523,7 @@ export async function deleteChangelog(id: string): Promise<boolean> {
 export interface AdminStats {
   totalItems: number;
   selectedItems: number;
+  internalItems: number; // 内部信源（仅入库用于分析、不外放）
   papers: number;
   projects: number;
   news: number;
@@ -481,9 +535,12 @@ export interface AdminStats {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const [total, selected, papers, projects, news, videos, sources, enabledSources] = await Promise.all([
+  const [total, selected, internal, papers, projects, news, videos, sources, enabledSources] = await Promise.all([
     prisma.item.count(),
     prisma.item.count({ where: { selected: true } }),
+    prisma.item.count({
+      where: { OR: [{ source: { startsWith: "wb-" } }, { source: { startsWith: "tw-" } }] },
+    }),
     prisma.item.count({ where: { type: "paper" } }),
     prisma.item.count({ where: { type: "project" } }),
     prisma.item.count({ where: { type: "news" } }),
@@ -500,6 +557,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   return {
     totalItems: total,
     selectedItems: selected,
+    internalItems: internal,
     papers,
     projects,
     news,

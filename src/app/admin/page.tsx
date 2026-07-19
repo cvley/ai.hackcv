@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 interface Stats {
   totalItems: number;
   selectedItems: number;
+  internalItems: number;
   papers: number;
   projects: number;
   news: number;
@@ -47,6 +48,7 @@ export default function AdminHome() {
   const cards: [string, number | string, string][] = [
     ["内容总数", stats.totalItems, "📦"],
     ["精选条目", stats.selectedItems, "⭐"],
+    ["内部/待分析", stats.internalItems, "🔒"],
     ["论文", stats.papers, "📄"],
     ["开源项目", stats.projects, "💻"],
     ["行业资讯", stats.news, "📰"],

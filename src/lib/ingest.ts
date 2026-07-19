@@ -10,6 +10,7 @@ import {
 import { scoreItem } from "./llm";
 import { interpretItem } from "./interpret";
 import { FETCHERS, fetchYoutube, fetchTwitter, fetchWeibo } from "./fetchers";
+import { isInternalSource } from "./db/repository";
 import type { Item } from "./types";
 
 export interface IngestSourceStat {
@@ -133,9 +134,11 @@ export async function runIngestion(opts?: {
         //  - ai===false：明确非 AI 内容，直接不入选（即便质量再高）
         //  - 预筛 AI 信源（arXiv 分类 / GitHub topic）：L1 已保证 AI 相关性，给入选保底，不被 55 分卡掉
         //  - 其它信源：按精选分阈值入选
+        const isInternal = isInternalSource(src.id);
         const isPreVettedAi = src.id === "arxiv-ai" || src.id === "github-trending";
         let selected: boolean;
-        if (scored.ai === false) selected = false;
+        if (isInternal) selected = false; // 仅入库用于分析，不入选公开简报
+        else if (scored.ai === false) selected = false;
         else if (isPreVettedAi) selected = true;
         else selected = scored.score >= settings.autoSelectThreshold;
         const item = await createItem({

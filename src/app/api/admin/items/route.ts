@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     type,
     category,
     take: Math.min(Math.max(take, 1), 500),
+    includeInternal: true, // 后台可见内部信源（微博 / X），用于分析
   });
   return NextResponse.json({ count: res.count, items: res.items });
 }
