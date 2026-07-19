@@ -39,6 +39,9 @@ const EN_STOP = new Set([
   "at", "as", "by", "an", "or", "it", "he", "she", "we", "me", "my", "from",
   "rt", "via", "amp", "com", "www", "http", "https", "co", "io", "ai", "ll", "im",
   "dont", "cant", "wont", "youre", "thats", "heres", "ive", "id", "ok", "yes", "no",
+  // HTML 属性噪声（部分信源 summary 残留 width=/href=/src= 等）
+  "src", "href", "width", "height", "alt", "class", "style", "rel", "target", "img",
+  "http", "https", "www", "com", "co", "io", "net", "org", "png", "jpg", "gif",
 ]);
 
 interface TermRecord {
@@ -76,7 +79,8 @@ function stripTags(s: string): string {
   return s
     .replace(/<[^>]+>/g, " ") // 去 HTML 标签
     .replace(/https?:\/\/\S+/g, " ") // 去 http(s):// 链接（避免 https 等噪音词）
-    .replace(/www\.\S+/g, " ");
+    .replace(/www\.\S+/g, " ")
+    .replace(/\b(?:src|href|width|height|alt|class|style|title|rel|target)=["']?[^\s"'>]*/g, " "); // 去 HTML 属性赋值残留
 }
 
 function extractHashtags(text: string): string[] {
