@@ -19,9 +19,9 @@ export async function postFeishuCard(
   if (secret) {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const stringToSign = `${timestamp}\n${secret}`;
+    // 飞书规范：sign = base64( HMAC-SHA256( key = timestamp+"\n"+secret, 消息为空 ) )
     const sign = crypto
-      .createHmac("sha256", secret)
-      .update(stringToSign)
+      .createHmac("sha256", stringToSign)
       .digest("base64");
     body.timestamp = timestamp;
     body.sign = sign;
