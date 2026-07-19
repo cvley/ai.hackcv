@@ -1,6 +1,7 @@
 // nginx access.log（combined 格式）解析与分析
 // 默认读取 ai.hackcv 独立 access_log；可通过环境变量 HACKCV_NGINX_LOG 覆盖路径。
 import { promises as fs } from "fs";
+import { ipCity } from "./geoip";
 
 export const NGINX_LOG_PATH =
   process.env.HACKCV_NGINX_LOG || "/var/log/nginx/ai.hackcv.access.log";
@@ -88,6 +89,7 @@ const BROWSER_RE = /Mozilla|Chrome|Safari|Firefox|Edge|OPR\/|Opera|CriOS/i;
 export interface TopItem {
   key: string;
   count: number;
+  city?: string; // IP 地理定位（仅 topIps 使用）：省/市
 }
 
 export interface HourBucket {
@@ -184,6 +186,11 @@ export function analyze(rawLines: string[], top = 20): LogStats {
     }
   }
 
+  const topIps: TopItem[] = topN(ipMap, top).map((t) => ({
+    ...t,
+    city: ipCity(t.key),
+  }));
+
   return {
     available: true,
     path: NGINX_LOG_PATH,
@@ -195,7 +202,7 @@ export function analyze(rawLines: string[], top = 20): LogStats {
     byMethod,
     byHour,
     topPaths: topN(pathMap, top),
-    topIps: topN(ipMap, top),
+    topIps,
     topReferers: topN(refMap, top),
     notFound: topN(nfMap, top),
     uaBots,

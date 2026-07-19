@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 interface TopItem {
   key: string;
   count: number;
+  city?: string;
 }
 interface HourBucket {
   hour: string;
@@ -267,6 +268,7 @@ export default function AdminLogs() {
               <tr>
                 <th>#</th>
                 <th>IP</th>
+                <th>城市</th>
                 <th>次数</th>
               </tr>
             </thead>
@@ -275,6 +277,7 @@ export default function AdminLogs() {
                 <tr key={p.key}>
                   <td>{i + 1}</td>
                   <td className="mono">{p.key}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{p.city || "—"}</td>
                   <td>{p.count}</td>
                 </tr>
               ))}
