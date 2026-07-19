@@ -6,6 +6,7 @@ const TABS = [
   { href: "/", ic: "🏠", label: "首页" },
   { href: "/all", ic: "📋", label: "全部" },
   { href: "/daily", ic: "📰", label: "简报" },
+  { href: "/redbook", ic: "📕", label: "红宝书" },
   { href: "/search", ic: "🔍", label: "搜索" },
   { href: "/about", ic: "⋯", label: "更多" },
 ];
