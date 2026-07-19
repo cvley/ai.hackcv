@@ -27,3 +27,7 @@ HACKCV_ENDPOINT=https://ai.hackcv.com
 
 # （可选）每天 08:17 强制全量补偿一次
 17 8 * * * /opt/hackcv/cron-ingest.sh force >> /var/log/hackcv-cron-ingest.log 2>&1
+
+# 每天 09:00：把未通知的用户反馈汇总推到飞书群机器人
+# （FEISHU_FEEDBACK_WEBHOOK / FEISHU_FEEDBACK_SECRET 在站点 .env 里配置，脚本只负责敲门）
+0 9 * * * /opt/hackcv/cron-feedback.sh >> /var/log/hackcv-cron-feedback.log 2>&1

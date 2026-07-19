@@ -611,6 +611,7 @@ export interface FeedbackEntry {
   contact: string | null;
   page: string | null;
   status: string; // new | read | resolved
+  notified: boolean; // 是否已推送飞书每日摘要
   createdAt: string;
   updatedAt: string;
 }
@@ -622,6 +623,7 @@ function rowToFeedback(r: any): FeedbackEntry {
     contact: r.contact ?? null,
     page: r.page ?? null,
     status: r.status,
+    notified: r.notified,
     createdAt: new Date(r.createdAt).toISOString(),
     updatedAt: new Date(r.updatedAt).toISOString(),
   };
@@ -664,6 +666,26 @@ export async function deleteFeedback(id: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// 取未推送飞书摘要的反馈（按时间倒序，最多 limit 条）
+export async function getUnnotifiedFeedbacks(limit = 50): Promise<FeedbackEntry[]> {
+  const rows = await prisma.feedback.findMany({
+    where: { notified: false },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return rows.map(rowToFeedback);
+}
+
+// 批量标记为已推送
+export async function markFeedbackNotified(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const res = await prisma.feedback.updateMany({
+    where: { id: { in: ids } },
+    data: { notified: true },
+  });
+  return res.count;
 }
 
 // ============ Token 消耗统计 ============
