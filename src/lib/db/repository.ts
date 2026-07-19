@@ -563,10 +563,11 @@ export interface AdminStats {
   sources: number;
   enabledSources: number;
   topScore: number;
+  feedbackCount: number; // 用户反馈（含未读）
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
-  const [total, selected, internal, papers, projects, news, videos, sources, enabledSources] = await Promise.all([
+  const [total, selected, internal, papers, projects, news, videos, sources, enabledSources, feedbackCount] = await Promise.all([
     prisma.item.count(),
     prisma.item.count({ where: { selected: true } }),
     prisma.item.count({
@@ -578,6 +579,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     prisma.item.count({ where: { type: "video" } }),
     prisma.source.count(),
     prisma.source.count({ where: { enabled: true } }),
+    prisma.feedback.count(),
   ]);
   const dated = await prisma.item.findMany({
     where: { dailyDate: { not: null } },
@@ -597,7 +599,71 @@ export async function getAdminStats(): Promise<AdminStats> {
     sources,
     enabledSources,
     topScore: top._max.score ?? 0,
+    feedbackCount,
   };
+}
+
+// ============ 用户反馈 ============
+
+export interface FeedbackEntry {
+  id: string;
+  message: string;
+  contact: string | null;
+  page: string | null;
+  status: string; // new | read | resolved
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToFeedback(r: any): FeedbackEntry {
+  return {
+    id: r.id,
+    message: r.message,
+    contact: r.contact ?? null,
+    page: r.page ?? null,
+    status: r.status,
+    createdAt: new Date(r.createdAt).toISOString(),
+    updatedAt: new Date(r.updatedAt).toISOString(),
+  };
+}
+
+export async function getFeedbacks(): Promise<FeedbackEntry[]> {
+  const rows = await prisma.feedback.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map(rowToFeedback);
+}
+
+export async function createFeedback(input: {
+  message: string;
+  contact?: string | null;
+  page?: string | null;
+}): Promise<FeedbackEntry> {
+  const row = await prisma.feedback.create({
+    data: {
+      message: input.message,
+      contact: input.contact ?? null,
+      page: input.page ?? null,
+    },
+  });
+  return rowToFeedback(row);
+}
+
+export async function updateFeedback(
+  id: string,
+  patch: { status?: string },
+): Promise<FeedbackEntry | null> {
+  const existing = await prisma.feedback.findUnique({ where: { id } });
+  if (!existing) return null;
+  const row = await prisma.feedback.update({ where: { id }, data: patch });
+  return rowToFeedback(row);
+}
+
+export async function deleteFeedback(id: string): Promise<boolean> {
+  try {
+    await prisma.feedback.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ============ Token 消耗统计 ============

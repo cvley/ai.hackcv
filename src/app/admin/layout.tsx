@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/llm", label: "LLM 状态", ic: "🧠" },
   { href: "/admin/settings", label: "站点设置", ic: "⚙️" },
   { href: "/admin/changelog", label: "更新日志", ic: "📝" },
+  { href: "/admin/feedback", label: "用户反馈", ic: "💬" },
   { href: "/", label: "查看前台", ic: "🌐" },
 ];
 

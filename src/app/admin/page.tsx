@@ -16,6 +16,7 @@ interface Stats {
   sources: number;
   enabledSources: number;
   topScore: number;
+  feedbackCount: number;
 }
 interface Cat { slug: string; label: string; type: string; description?: string; }
 interface Source { id: string; name: string; type: string; category: string; enabled: boolean; }
@@ -56,6 +57,7 @@ export default function AdminHome() {
     ["简报天数", stats.dailies, "🗓️"],
     ["已启用信源", `${stats.enabledSources}/${stats.sources}`, "🔌"],
     ["最高精选分", stats.topScore, "🔥"],
+    ["用户反馈", stats.feedbackCount, "💬"],
   ];
 
   return (
@@ -88,6 +90,9 @@ export default function AdminHome() {
         </Link>
         <Link className="btn btn-ghost" href="/admin/dailies">
           📰 生成简报
+        </Link>
+        <Link className="btn btn-ghost" href="/admin/feedback">
+          💬 用户反馈{stats.feedbackCount > 0 ? `（${stats.feedbackCount}）` : ""}
         </Link>
       </div>
 

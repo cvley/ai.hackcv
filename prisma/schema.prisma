@@ -100,3 +100,17 @@ model Changelog {
 
   @@index([version])
 }
+
+// 用户反馈（前台匿名提交，后台可见 / 标记处理）
+model Feedback {
+  id        String   @id @default(cuid())
+  message   String // 反馈正文
+  contact   String? // 邮箱 / 微信等联系方式（选填）
+  page      String? // 提交来源页（location.pathname）
+  status    String   @default("new") // new | read | resolved
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+}
