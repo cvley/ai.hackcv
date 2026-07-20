@@ -6,17 +6,23 @@ import {
   REDBOOK_UPDATED,
   REDBOOK_VERSION,
   REDBOOK_TOOL_COUNT,
+  REDBOOK_PERSON_COUNT,
 } from "@/lib/redbook";
 
 export const metadata: Metadata = {
   title: "2026 AI 工具红宝书 · 持续更新",
   description: `精选 ${REDBOOK_TOOL_COUNT}+ 款 2026 年最值得用的 AI 工具，按对话大模型、AI 编程、AI 搜索、图像、视频、音频、办公、Agent 分类整理，持续更新。`,
-  keywords: [
+    keywords: [
     "AI 工具",
     "AI 工具推荐",
     "2026 AI 工具",
     "AI 工具合集",
     "AI 工具红宝书",
+    "AI 博主",
+    "AI 账号",
+    "优质 AI 账号",
+    "X AI 账号",
+    "微博 AI 博主",
     "ChatGPT",
     "Claude",
     "AI 编程",
@@ -39,7 +45,7 @@ const jsonLd = {
   url: `${SITE.url}/redbook`,
   numberOfItems: REDBOOK_TOOL_COUNT,
   itemListElement: REDBOOK.flatMap((cat) =>
-    cat.tools.map((t, i) => ({
+    (cat.tools ?? []).map((t, i) => ({
       "@type": "ListItem",
       position: i + 1,
       name: t.name,
@@ -68,6 +74,9 @@ export default function RedbookPage() {
         <div className="rb-meta">
           <span>🗂 {REDBOOK.length} 大分类</span>
           <span>🧰 {REDBOOK_TOOL_COUNT} 款工具</span>
+          {REDBOOK_PERSON_COUNT > 0 && (
+            <span>🌟 {REDBOOK_PERSON_COUNT} 位博主</span>
+          )}
           <span>🔖 {REDBOOK_VERSION}</span>
           <span>🕒 更新于 {REDBOOK_UPDATED}</span>
         </div>
@@ -96,32 +105,64 @@ export default function RedbookPage() {
             {cat.intro && <p className="rb-sec-intro">{cat.intro}</p>}
           </div>
 
-          <div className="rb-grid">
-            {cat.tools.map((t) => (
-              <a
-                key={t.name}
-                className="rb-card"
-                href={t.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="rb-card-top">
-                  <span className="rb-name">{t.name}</span>
-                  {t.hot && <span className="rb-tag-hot">力荐</span>}
-                  {t.cn && <span className="rb-tag-cn">国产</span>}
-                </div>
-                <p className="rb-desc">{t.desc}</p>
-                <div className="rb-card-foot">
-                  {(t.tags ?? []).map((tag) => (
-                    <span key={tag} className="rb-chip">
-                      {tag}
-                    </span>
-                  ))}
-                  {t.price && <span className="rb-price">{t.price}</span>}
-                </div>
-              </a>
-            ))}
-          </div>
+          {cat.tools && (
+            <div className="rb-grid">
+              {cat.tools.map((t) => (
+                <a
+                  key={t.name}
+                  className="rb-card"
+                  href={t.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className="rb-card-top">
+                    <span className="rb-name">{t.name}</span>
+                    {t.hot && <span className="rb-tag-hot">力荐</span>}
+                    {t.cn && <span className="rb-tag-cn">国产</span>}
+                  </div>
+                  <p className="rb-desc">{t.desc}</p>
+                  <div className="rb-card-foot">
+                    {(t.tags ?? []).map((tag) => (
+                      <span key={tag} className="rb-chip">
+                        {tag}
+                      </span>
+                    ))}
+                    {t.price && <span className="rb-price">{t.price}</span>}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {cat.people && (
+            <div className="rb-grid">
+              {cat.people.map((p) => (
+                <a
+                  key={p.handle}
+                  className="rb-card rb-person"
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div className="rb-card-top">
+                    <span className="rb-name">{p.name}</span>
+                    {p.hot && <span className="rb-tag-hot">力荐</span>}
+                    <span className="rb-platform">{p.platform}</span>
+                  </div>
+                  <div className="rb-handle">{p.handle}</div>
+                  <div className="rb-role">{p.role}</div>
+                  <p className="rb-desc">{p.desc}</p>
+                  <div className="rb-card-foot">
+                    {(p.tags ?? []).map((tag) => (
+                      <span key={tag} className="rb-chip">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </section>
       ))}
 
