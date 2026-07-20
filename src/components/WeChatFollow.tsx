@@ -3,8 +3,8 @@ import Link from "next/link";
 type Mode = "footer" | "card" | "mini";
 
 const QR = "/images/wechat/qrcode.jpg";
-const SEARCH_BAR = "/images/wechat/search-standard.png";
-const COMBINED = "/images/wechat/scan-search-standard.png";
+const SEARCH_BAR = "/images/wechat/search-standard";
+const COMBINED = "/images/wechat/scan-search-standard";
 
 export default function WeChatFollow({ mode = "footer" }: { mode?: Mode }) {
   // ── About 页完整卡片 ──
@@ -30,8 +30,12 @@ export default function WeChatFollow({ mode = "footer" }: { mode?: Mode }) {
             <p className="wx-step">
               <b>①</b> 打开微信，在顶部搜索框输入 <span className="wx-key">hackcv</span>
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="wx-searchbar" src={SEARCH_BAR} width={280} height={44} alt="微信搜一搜 hackcv" loading="lazy" />
+            <picture>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <source srcSet={`${SEARCH_BAR}.webp`} type="image/webp" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="wx-searchbar" src={`${SEARCH_BAR}.png`} width={280} height={44} alt="微信搜一搜 hackcv" loading="lazy" />
+            </picture>
             <p className="wx-step">
               <b>②</b> 或长按 / 扫码直接关注，不错过每日更新
             </p>
@@ -39,8 +43,12 @@ export default function WeChatFollow({ mode = "footer" }: { mode?: Mode }) {
           </div>
         </div>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="wx-banner" src={COMBINED} width={720} height={262} alt="微信搜一搜与扫码关注 hackcv" loading="lazy" />
+        <picture>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <source srcSet={`${COMBINED}.webp`} type="image/webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="wx-banner" src={`${COMBINED}.png`} width={720} height={262} alt="微信搜一搜与扫码关注 hackcv" loading="lazy" />
+        </picture>
       </section>
     );
   }
