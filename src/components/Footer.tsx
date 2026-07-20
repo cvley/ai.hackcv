@@ -1,11 +1,9 @@
 import Link from "next/link";
-import WeChatFollow from "@/components/WeChatFollow";
 
 export default function Footer() {
   return (
     <footer>
       <div className="container">
-        <WeChatFollow mode="footer" />
         <div className="ft-grid">
           <div className="ft-brand">
             <div className="ft-logo">
