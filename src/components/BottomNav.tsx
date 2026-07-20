@@ -8,7 +8,7 @@ const TABS = [
   { href: "/daily", ic: "📰", label: "简报" },
   { href: "/redbook", ic: "📕", label: "红宝书" },
   { href: "/search", ic: "🔍", label: "搜索" },
-  { href: "/about", ic: "⋯", label: "更多" },
+  { href: "/about#wechat", ic: "💬", label: "关注" },
 ];
 
 export default function BottomNav() {
@@ -17,7 +17,8 @@ export default function BottomNav() {
     <nav className="bottom-nav">
       <div className="inner">
         {TABS.map((t) => {
-          const active = t.href === "/" ? path === "/" : path.startsWith(t.href);
+          const base = t.href.split("#")[0];
+          const active = base === "/" ? path === "/" : path.startsWith(base);
           return (
             <Link key={t.href} href={t.href} className={active ? "active" : ""}>
               <span className="ic">{t.ic}</span>

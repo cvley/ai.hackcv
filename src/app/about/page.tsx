@@ -1,3 +1,5 @@
+import WeChatFollow from "@/components/WeChatFollow";
+
 export const metadata = { title: "关于" };
 
 export default function AboutPage() {
@@ -43,6 +45,8 @@ export default function AboutPage() {
       <p>
         合作、纠错或内容授权，请通过 <a href="/feedback">反馈页</a> 与我们联系。
       </p>
+
+      <WeChatFollow mode="card" />
     </div>
   );
 }

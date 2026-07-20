@@ -1,9 +1,11 @@
 import Link from "next/link";
+import WeChatFollow from "@/components/WeChatFollow";
 
 export default function Footer() {
   return (
     <footer>
       <div className="container">
+        <WeChatFollow mode="footer" />
         <p>
           hackcv · 实时 AI 资讯聚合平台 &nbsp;|&nbsp;{" "}
           <Link href="/developers">开发者</Link> · <Link href="/cli">CLI</Link> · <Link href="/skill">Skill</Link> ·{" "}
