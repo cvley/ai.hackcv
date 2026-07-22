@@ -21,17 +21,19 @@ import { prisma } from "./prisma";
 import { hotness } from "../scoring";
 import { computeScore } from "../scoring";
 import { SITE } from "../config";
+import { cleanText } from "../utils";
 
 // ============ 行 ↔ 领域对象映射 ============
 
 function rowToItem(r: any): Item {
+  const interp = r.interpretation;
   return {
     id: r.id,
     type: r.type,
-    title: r.title,
-    title_zh: r.titleZh ?? undefined,
-    summary: r.summary,
-    recommendation: r.recommendation ?? undefined,
+    title: cleanText(r.title),
+    title_zh: r.titleZh ? cleanText(r.titleZh) : undefined,
+    summary: cleanText(r.summary),
+    recommendation: r.recommendation ? cleanText(r.recommendation) : undefined,
     url: r.url,
     permalink: r.permalink,
     source: r.source,
@@ -47,7 +49,9 @@ function rowToItem(r: any): Item {
     projectFields: r.projectFields ?? undefined,
     newsFields: r.newsFields ?? undefined,
     videoFields: r.videoFields ?? undefined,
-    interpretation: r.interpretation ?? undefined,
+    interpretation: interp
+      ? { ...interp, summary: cleanText(interp.summary) }
+      : undefined,
     attribution:
       r.attribution && typeof r.attribution === "object"
         ? r.attribution
@@ -117,10 +121,10 @@ function sanitizeDeep(v: any): any {
 function toCommon(r: Item): Prisma.ItemUpdateInput {
   const c: any = {
     type: r.type,
-    title: sanitizeStr(r.title),
-    titleZh: r.title_zh ? sanitizeStr(r.title_zh) : null,
-    summary: sanitizeStr(r.summary),
-    recommendation: r.recommendation ? sanitizeStr(r.recommendation) : null,
+    title: sanitizeStr(cleanText(r.title)),
+    titleZh: r.title_zh ? sanitizeStr(cleanText(r.title_zh)) : null,
+    summary: sanitizeStr(cleanText(r.summary)),
+    recommendation: r.recommendation ? sanitizeStr(cleanText(r.recommendation)) : null,
     permalink: sanitizeStr(r.permalink),
     source: sanitizeStr(r.source),
     sources: sanitizeDeep(r.sources),
